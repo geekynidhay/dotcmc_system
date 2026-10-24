@@ -1,7 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 	
-<?php session_start(); ?>
+<?php 
+session_start(); 
+if(!isset($_SESSION['system'])){
+  include_once('./db_connect.php');
+  $sys = $conn->query("SELECT * FROM system_settings limit 1");
+  if($sys && $sys->num_rows > 0){
+    foreach($sys->fetch_array() as $k => $v){
+      $_SESSION['system'][$k] = $v;
+    }
+  }
+}
+?>
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
