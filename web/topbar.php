@@ -34,7 +34,7 @@
           <span id="liveClock" style="font-size: 1.1rem; font-weight: 600; color: var(--primary-navy); margin-right: 25px;"></span>
           <div class="dropdown">
               <a href="#" class="text-dark dropdown-toggle" id="account_settings" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <img src="assets/logo.svg" alt="DOT CMC" style="height: 35px; width: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-navy);">
+                  <img src="assets/logo.png" alt="Admin" style="height: 35px; width: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-navy);">
               </a>
                 <div class="dropdown-menu shadow" aria-labelledby="account_settings" style="left: -2.5em; border: 1px solid var(--border-color);">
                   <a class="dropdown-item" href="javascript:void(0)" id="manage_my_account"><i class="fa fa-cog"></i> Manage Account</a>
