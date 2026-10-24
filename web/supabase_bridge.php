@@ -129,8 +129,41 @@ class SupabaseDBBridge {
                 $res = $this->apiRequest('student?select=*&order=id.desc');
                 return new SupabaseQueryResult($res ?: []);
             }
-            // Check for payments
+            // Check for sum(amount) / aggregate on payments
             if (stripos($sql, 'FROM payments') !== false) {
+                if (stripos($sql, 'sum(amount)') !== false) {
+                    $res = $this->apiRequest('payments?select=amount,date_created,mode');
+                    if (!$res) $res = [];
+                    
+                    // Check if filtering by today
+                    if (preg_match("/date\(date_created\)\s*=\s*'([^']+)'/i", $sql, $matches)) {
+                        $targetDate = $matches[1];
+                        $res = array_filter($res, function($row) use ($targetDate) {
+                            return isset($row['date_created']) && strpos($row['date_created'], $targetDate) === 0;
+                        });
+                    }
+
+                    // Check if GROUP BY mode
+                    if (stripos($sql, 'GROUP BY mode') !== false) {
+                        $grouped = [];
+                        foreach ($res as $r) {
+                            $m = !empty($r['mode']) ? $r['mode'] : 'Cash';
+                            if (!isset($grouped[$m])) {
+                                $grouped[$m] = ['mode' => $m, 'total' => 0];
+                            }
+                            $grouped[$m]['total'] += (float)($r['amount'] ?? 0);
+                        }
+                        return new SupabaseQueryResult(array_values($grouped));
+                    }
+
+                    // Standard sum total
+                    $sum = 0;
+                    foreach ($res as $r) {
+                        $sum += (float)($r['amount'] ?? 0);
+                    }
+                    return new SupabaseQueryResult([['total' => $sum]]);
+                }
+
                 $res = $this->apiRequest('payments?select=*&order=id.desc');
                 return new SupabaseQueryResult($res ?: []);
             }
