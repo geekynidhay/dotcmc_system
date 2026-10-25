@@ -22,15 +22,16 @@ import QRCode from 'react-native-qrcode-svg';
 
 const APP_LOGO = require('./assets/logo.png');
 
-// Primary endpoint: tries reverse localhost first (for USB/Android Studio), then fallback to LAN Wi-Fi
+// Primary endpoint: tries reverse localhost first, then all detected local LAN IPs
 const ENDPOINTS = [
-  'http://localhost:8080/ajax.php',
-  'http://192.168.1.17:8080/ajax.php',
-  'http://10.0.2.2:8080/ajax.php' // Standard Android Emulator host loopback
+  'http://192.168.1.15:8080/ajax.php', // Current Wi-Fi LAN IP
+  'http://localhost:8080/ajax.php',    // USB adb reverse
+  'http://192.168.1.17:8080/ajax.php', // Previous Wi-Fi IP
+  'http://10.0.2.2:8080/ajax.php'      // Standard Android Emulator loopback
 ];
 
 // Base URL for online view receipt
-const RECEIPT_BASE_URL = 'http://192.168.1.17:8080/view_receipt.php';
+const RECEIPT_BASE_URL = 'http://192.168.1.15:8080/view_receipt.php';
 
 export default function App() {
   const [session, setSession] = useState(null);
