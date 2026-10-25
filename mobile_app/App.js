@@ -3,6 +3,7 @@ import {
   StyleSheet, 
   Text, 
   View, 
+  Image,
   TextInput, 
   TouchableOpacity, 
   SafeAreaView, 
@@ -18,6 +19,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
+
+const APP_LOGO = require('./assets/logo.png');
 
 // Primary endpoint: tries reverse localhost first (for USB/Android Studio), then fallback to LAN Wi-Fi
 const ENDPOINTS = [
@@ -171,7 +174,7 @@ export default function App() {
         <View style={styles.topbarContainer}>
           <View style={styles.topbarLeft}>
             <View style={styles.topbarEmblem}>
-              <Text style={styles.topbarEmblemText}>DC</Text>
+              <Image source={APP_LOGO} style={styles.topbarLogoImage} resizeMode="contain" />
             </View>
             <View style={styles.topbarTextContainer}>
               <Text style={styles.topbarBrand}>DOT-CMC COMPUTER</Text>
@@ -371,9 +374,7 @@ export default function App() {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <ScrollView contentContainerStyle={styles.loginContainer}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>DC</Text>
-          </View>
+          <Image source={APP_LOGO} style={styles.screenLogoImage} resizeMode="contain" />
           <Text style={styles.brandTitle}>Confirm Your Details</Text>
           <Text style={styles.brandSubtitle}>Fetched from Center Database</Text>
 
@@ -432,9 +433,7 @@ export default function App() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.simpleLoginContainer} keyboardShouldPersistTaps="handled">
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>DC</Text>
-          </View>
+          <Image source={APP_LOGO} style={styles.screenLogoImage} resizeMode="contain" />
           <Text style={styles.brandTitle}>DOT CMC</Text>
           <Text style={styles.brandSubtitle}>Student Mobile Login</Text>
 
@@ -516,19 +515,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topbarEmblem: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 10,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
   },
-  topbarEmblemText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 0.5,
+  topbarLogoImage: {
+    width: 36,
+    height: 36,
+  },
+  screenLogoImage: {
+    width: 90,
+    height: 90,
+    marginBottom: 16,
   },
   topbarTextContainer: {
     flex: 1,
