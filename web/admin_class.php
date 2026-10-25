@@ -691,4 +691,128 @@ Class Action {
 		}
 		return 1;
 	}
+
+	function generate_student_otp(){
+		extract($_POST);
+		if(empty($student_id)){
+			return json_encode(['status' => 0, 'msg' => 'Student ID is required']);
+		}
+		$student_id = intval($student_id);
+		$ef_id = isset($ef_id) ? intval($ef_id) : 0;
+
+		// Generate random 4-digit numeric OTP (e.g., 1000 - 9999)
+		$otp = strval(rand(1000, 9999));
+		// Expires in 30 seconds
+		$expires_at = date('Y-m-d H:i:s', time() + 30);
+
+		// Remove any existing OTP for this student so only 1 current code exists
+		$this->db->query("DELETE FROM student_login_otps WHERE student_id = $student_id");
+
+		$ins = $this->db->query("INSERT INTO student_login_otps (student_id, ef_id, otp, expires_at) VALUES ($student_id, $ef_id, '$otp', '$expires_at')");
+
+		if($ins){
+			return json_encode(['status' => 1, 'otp' => $otp, 'expires_in' => 30]);
+		} else {
+			return json_encode(['status' => 0, 'msg' => 'Failed to record OTP']);
+		}
+	}
+
+	function get_mobile_students(){
+		$q = isset($_GET['search']) ? $this->db->real_escape_string($_GET['search']) : '';
+		$where = "";
+		if(!empty($q)){
+			$where = "WHERE s.name LIKE '%$q%' OR s.id_no LIKE '%$q%' OR ef.ef_no LIKE '%$q%'";
+		}
+		$qry = $this->db->query("
+			SELECT s.id, s.id_no, s.name, ef.id as ef_id, ef.ef_no, COALESCE(c.course, 'General') as course
+			FROM student s
+			INNER JOIN student_ef_list ef ON ef.student_id = s.id
+			LEFT JOIN courses c ON c.id = ef.course_id
+			$where
+			ORDER BY s.name ASC LIMIT 50
+		");
+		$list = [];
+		while($row = $qry->fetch_assoc()){
+			$list[] = [
+				'student_id' => $row['id'],
+				'roll_no' => $row['id_no'],
+				'name' => ucwords($row['name']),
+				'ef_id' => $row['ef_id'],
+				'ledger_no' => $row['ef_no'],
+				'course' => $row['course']
+			];
+		}
+		header('Content-Type: application/json');
+		return json_encode($list);
+	}
+
+	function verify_student_otp(){
+		extract($_POST);
+		if(empty($student_id) || empty($otp)){
+			return json_encode(['status' => 0, 'msg' => 'Student and 4-digit OTP are required']);
+		}
+		$student_id = intval($student_id);
+		$otp = preg_replace('/[^0-9]/', '', $otp); // Strictly digits only
+		$now = date('Y-m-d H:i:s');
+
+		// Check matching unexpired OTP
+		$check = $this->db->query("SELECT * FROM student_login_otps WHERE student_id = $student_id AND otp = '$otp' AND expires_at >= '$now' LIMIT 1");
+
+		if($check && $check->num_rows > 0){
+			$otp_row = $check->fetch_assoc();
+
+			// Destroy OTP immediately so it cannot be used again
+			$this->db->query("DELETE FROM student_login_otps WHERE student_id = $student_id");
+
+			// Fetch full student profile and fee breakdown
+			$s_qry = $this->db->query("
+				SELECT s.*, ef.id as ef_id, ef.ef_no, ef.total_fee, COALESCE(c.course, 'General') as course, c.description as course_desc
+				FROM student s
+				INNER JOIN student_ef_list ef ON ef.student_id = s.id
+				LEFT JOIN courses c ON c.id = ef.course_id
+				WHERE s.id = $student_id LIMIT 1
+			");
+			$student = $s_qry->fetch_assoc();
+
+			// Fetch payments history
+			$ef_id = $student['ef_id'];
+			$p_qry = $this->db->query("SELECT id, amount, remarks, mode, date_created FROM payments WHERE ef_id = $ef_id ORDER BY id DESC");
+			$payments = [];
+			$total_paid = 0;
+			while($p = $p_qry->fetch_assoc()){
+				$payments[] = [
+					'receipt_no' => $p['id'],
+					'amount' => (float)$p['amount'],
+					'remarks' => $p['remarks'],
+					'mode' => $p['mode'],
+					'date' => $p['date_created']
+				];
+				$total_paid += (float)$p['amount'];
+			}
+
+			$total_fee = (float)$student['total_fee'];
+			$balance = $total_fee - $total_paid;
+
+			header('Content-Type: application/json');
+			return json_encode([
+				'status' => 1,
+				'msg' => 'Login Successful',
+				'student' => [
+					'id' => $student['id'],
+					'name' => ucwords($student['name']),
+					'roll_no' => $student['id_no'],
+					'contact' => $student['contact'],
+					'course' => $student['course'],
+					'ledger_no' => $student['ef_no'],
+					'total_fee' => $total_fee,
+					'total_paid' => $total_paid,
+					'balance' => $balance,
+					'payments' => $payments
+				]
+			]);
+		} else {
+			header('Content-Type: application/json');
+			return json_encode(['status' => 0, 'msg' => 'Invalid or expired 30s OTP. Please ask admin to generate a new one.']);
+		}
+	}
 }

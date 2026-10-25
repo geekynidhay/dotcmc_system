@@ -128,5 +128,20 @@ if($action == "send_custom_message"){
 	if($save)
 		echo $save;
 }
+if($action == "generate_student_otp"){
+	$save = $crud->generate_student_otp();
+	if($save)
+		echo $save;
+}
+if($action == "get_mobile_students"){
+	$get = $crud->get_mobile_students();
+	if($get)
+		echo $get;
+}
+if($action == "verify_student_otp"){
+	$verify = $crud->verify_student_otp();
+	if($verify)
+		echo $verify;
+}
 ob_end_flush();
 ?>
