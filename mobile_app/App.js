@@ -22,16 +22,16 @@ import QRCode from 'react-native-qrcode-svg';
 
 const APP_LOGO = require('./assets/logo.png');
 
-// Primary endpoint: tries reverse localhost first, then all detected local LAN IPs
+// Primary endpoint: tries live public HTTPS URL first, then LAN/USB fallbacks
 const ENDPOINTS = [
-  'http://192.168.1.15:8080/ajax.php', // Current Wi-Fi LAN IP
-  'http://localhost:8080/ajax.php',    // USB adb reverse
-  'http://192.168.1.17:8080/ajax.php', // Previous Wi-Fi IP
-  'http://10.0.2.2:8080/ajax.php'      // Standard Android Emulator loopback
+  'https://dotcmc-center-test.loca.lt/ajax.php', // Live Public HTTPS URL
+  'http://192.168.1.15:8080/ajax.php',           // Current Wi-Fi LAN IP
+  'http://localhost:8080/ajax.php',              // USB adb reverse
+  'http://10.0.2.2:8080/ajax.php'                // Android Emulator
 ];
 
 // Base URL for online view receipt
-const RECEIPT_BASE_URL = 'http://192.168.1.15:8080/view_receipt.php';
+const RECEIPT_BASE_URL = 'https://dotcmc-center-test.loca.lt/view_receipt.php';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -90,6 +90,9 @@ export default function App() {
 
         const response = await fetch(`${url}?action=verify_student_otp`, {
           method: 'POST',
+          headers: {
+            'bypass-tunnel-reminder': '1'
+          },
           body: formData,
           signal: controller.signal
         });
