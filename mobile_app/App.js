@@ -187,12 +187,8 @@ export default function App() {
           {/* PROFILE CARD */}
           <View style={styles.card}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Roll No / ID:</Text>
-              <Text style={styles.infoValue}>{session.roll_no}</Text>
-            </View>
-            <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Ledger No:</Text>
-              <Text style={styles.infoValue}>{session.ledger_no}</Text>
+              <Text style={[styles.infoValue, { fontWeight: '800', color: '#0f172a' }]}>{session.ledger_no}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Course:</Text>
@@ -385,11 +381,6 @@ export default function App() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>STUDENT NAME</Text>
               <Text style={styles.detailValuePrimary}>{fetchedStudent.name}</Text>
-            </View>
-
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>ROLL NUMBER</Text>
-              <Text style={styles.detailValue}>{fetchedStudent.roll_no}</Text>
             </View>
 
             <View style={styles.detailRow}>
