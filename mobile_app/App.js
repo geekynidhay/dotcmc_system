@@ -248,12 +248,12 @@ export default function App() {
                     </View>
                   </View>
                   <Text style={styles.receiptDate}>{p.date} • {p.mode}</Text>
-                  {p.remarks ? <Text style={styles.receiptRemarks}>Remarks: {p.remarks}</Text> : null}
+                  {p.remarks ? <Text style={styles.receiptRemarks}>Receipt No.: {p.remarks}</Text> : null}
                 </View>
 
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.receiptAmount}>₹{Number(p.amount || 0).toLocaleString('en-IN')}</Text>
-                  <Text style={styles.viewReceiptLink}>View Bill ›</Text>
+                  <Text style={styles.viewReceiptLink}>View Receipt ›</Text>
                 </View>
               </TouchableOpacity>
             ))
@@ -295,7 +295,7 @@ export default function App() {
                   <View style={styles.receiptMetaCard}>
                     <View style={styles.receiptMetaRow}>
                       <Text style={styles.receiptMetaLabel}>Receipt No:</Text>
-                      <Text style={styles.receiptMetaValue}>#{selectedReceipt.receipt_no}</Text>
+                      <Text style={styles.receiptMetaValue}>{selectedReceipt.remarks || `#${selectedReceipt.receipt_no}`}</Text>
                     </View>
                     <View style={styles.receiptMetaRow}>
                       <Text style={styles.receiptMetaLabel}>Student Name:</Text>
@@ -313,12 +313,6 @@ export default function App() {
                       <Text style={styles.receiptMetaLabel}>Date & Mode:</Text>
                       <Text style={styles.receiptMetaValue}>{selectedReceipt.date} ({selectedReceipt.mode})</Text>
                     </View>
-                    {selectedReceipt.remarks ? (
-                      <View style={styles.receiptMetaRow}>
-                        <Text style={styles.receiptMetaLabel}>Remarks:</Text>
-                        <Text style={styles.receiptMetaValue}>{selectedReceipt.remarks}</Text>
-                      </View>
-                    ) : null}
                     <View style={[styles.receiptMetaRow, styles.receiptAmountRow]}>
                       <Text style={styles.receiptTotalLabel}>AMOUNT PAID:</Text>
                       <Text style={styles.receiptTotalValue}>₹{Number(selectedReceipt.amount).toLocaleString('en-IN')}</Text>
