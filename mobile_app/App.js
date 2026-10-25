@@ -8,12 +8,16 @@ import {
   SafeAreaView, 
   ActivityIndicator, 
   Alert, 
-  ScrollView,
-  StatusBar,
-  KeyboardAvoidingView,
-  Platform
+  ScrollView, 
+  StatusBar, 
+  KeyboardAvoidingView, 
+  Platform,
+  Modal,
+  Linking,
+  Share
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import QRCode from 'react-native-qrcode-svg';
 
 // Primary endpoint: tries reverse localhost first (for USB/Android Studio), then fallback to LAN Wi-Fi
 const ENDPOINTS = [
@@ -21,6 +25,9 @@ const ENDPOINTS = [
   'http://192.168.1.17:8080/ajax.php',
   'http://10.0.2.2:8080/ajax.php' // Standard Android Emulator host loopback
 ];
+
+// Base URL for online view receipt
+const RECEIPT_BASE_URL = 'http://192.168.1.17:8080/view_receipt.php';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -35,6 +42,9 @@ export default function App() {
 
   // Step 2: Fetched student details for verification
   const [fetchedStudent, setFetchedStudent] = useState(null);
+
+  // Selected receipt for modal preview
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   useEffect(() => {
     checkSavedSession();
@@ -129,6 +139,7 @@ export default function App() {
           setSession(null);
           setFetchedStudent(null);
           setOtp('');
+          setSelectedReceipt(null);
           setScreenState('otp_input');
         }
       }
@@ -147,20 +158,30 @@ export default function App() {
   // VIEW 3: LOGGED-IN DASHBOARD
   // ==========================================
   if (session) {
+    const efId = session.ef_id || session.id;
+
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1e3a8a" />
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerSubtitle}>DOT CMC STUDENT PORTAL</Text>
-            <Text style={styles.headerTitle}>{session.name}</Text>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+        
+        {/* PREMIUM FIXED TOPBAR */}
+        <View style={styles.topbarContainer}>
+          <View style={styles.topbarLeft}>
+            <View style={styles.topbarEmblem}>
+              <Text style={styles.topbarEmblemText}>DC</Text>
+            </View>
+            <View style={styles.topbarTextContainer}>
+              <Text style={styles.topbarBrand}>DOT-CMC COMPUTER</Text>
+              <Text style={styles.topbarStudentName} numberOfLines={1}>{session.name}</Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Text style={styles.logoutBtnText}>Logout</Text>
+          <TouchableOpacity style={styles.topbarLogoutBtn} onPress={handleLogout} activeOpacity={0.7}>
+            <Text style={styles.topbarLogoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* PROFILE CARD */}
           <View style={styles.card}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Roll No / ID:</Text>
@@ -172,46 +193,66 @@ export default function App() {
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Course:</Text>
-              <Text style={[styles.infoValue, { color: '#1e3a8a', fontWeight: 'bold' }]}>{session.course}</Text>
+              <Text style={[styles.infoValue, { color: '#2563eb', fontWeight: 'bold' }]}>{session.course}</Text>
             </View>
-            <View style={styles.infoRow}>
+            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
               <Text style={styles.infoLabel}>Registered Mobile:</Text>
               <Text style={styles.infoValue}>{session.contact || 'N/A'}</Text>
             </View>
           </View>
 
+          {/* FEE SUMMARY CARD */}
           <View style={[styles.card, styles.feeCard]}>
             <Text style={styles.feeCardTitle}>FEE SUMMARY</Text>
             <View style={styles.feeGrid}>
               <View style={styles.feeCol}>
                 <Text style={styles.feeLabel}>Total Course Fee</Text>
-                <Text style={styles.feeAmount}>₹{session.total_fee.toLocaleString('en-IN')}</Text>
+                <Text style={styles.feeAmount}>₹{Number(session.total_fee || 0).toLocaleString('en-IN')}</Text>
               </View>
               <View style={styles.feeCol}>
                 <Text style={styles.feeLabel}>Total Paid</Text>
-                <Text style={[styles.feeAmount, { color: '#10b981' }]}>₹{session.total_paid.toLocaleString('en-IN')}</Text>
+                <Text style={[styles.feeAmount, { color: '#10b981' }]}>₹{Number(session.total_paid || 0).toLocaleString('en-IN')}</Text>
               </View>
             </View>
             <View style={styles.divider} />
             <View style={styles.balanceRow}>
               <Text style={styles.balanceLabel}>Remaining Balance Due:</Text>
               <Text style={[styles.balanceAmount, { color: session.balance > 0 ? '#ef4444' : '#10b981' }]}>
-                ₹{session.balance.toLocaleString('en-IN')}
+                ₹{Number(session.balance || 0).toLocaleString('en-IN')}
               </Text>
             </View>
           </View>
 
-          <Text style={styles.sectionHeader}>PAYMENT RECEIPTS</Text>
+          {/* PAYMENT RECEIPTS LIST WITH TAP TO VIEW & QR */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeader}>PAYMENT RECEIPTS</Text>
+            <Text style={styles.sectionHeaderHint}>Tap receipt to view & QR</Text>
+          </View>
+
           {session.payments && session.payments.length > 0 ? (
             session.payments.map((p, idx) => (
-              <View key={idx} style={styles.paymentCard}>
+              <TouchableOpacity 
+                key={idx} 
+                style={styles.paymentCard}
+                activeOpacity={0.7}
+                onPress={() => setSelectedReceipt(p)}
+              >
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.receiptTitle}>Receipt #{p.receipt_no}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.receiptTitle}>Receipt #{p.receipt_no}</Text>
+                    <View style={styles.qrBadge}>
+                      <Text style={styles.qrBadgeText}>QR</Text>
+                    </View>
+                  </View>
                   <Text style={styles.receiptDate}>{p.date} • {p.mode}</Text>
                   {p.remarks ? <Text style={styles.receiptRemarks}>Remarks: {p.remarks}</Text> : null}
                 </View>
-                <Text style={styles.receiptAmount}>₹{p.amount.toLocaleString('en-IN')}</Text>
-              </View>
+
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.receiptAmount}>₹{Number(p.amount || 0).toLocaleString('en-IN')}</Text>
+                  <Text style={styles.viewReceiptLink}>View Bill ›</Text>
+                </View>
+              </TouchableOpacity>
             ))
           ) : (
             <View style={styles.emptyCard}>
@@ -221,6 +262,110 @@ export default function App() {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
+        {selectedReceipt && (
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={true}
+            onRequestClose={() => setSelectedReceipt(null)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.receiptModalContainer}>
+                {/* MODAL HEADER */}
+                <View style={styles.receiptModalHeader}>
+                  <View>
+                    <Text style={styles.receiptModalBrand}>DOT-CMC COMPUTER</Text>
+                    <Text style={styles.receiptModalSubtitle}>OFFICIAL PAYMENT RECEIPT</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.receiptCloseBtn} 
+                    onPress={() => setSelectedReceipt(null)}
+                  >
+                    <Text style={styles.receiptCloseText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.receiptModalScroll} showsVerticalScrollIndicator={false}>
+                  {/* RECEIPT SUMMARY BOX */}
+                  <View style={styles.receiptMetaCard}>
+                    <View style={styles.receiptMetaRow}>
+                      <Text style={styles.receiptMetaLabel}>Receipt No:</Text>
+                      <Text style={styles.receiptMetaValue}>#{selectedReceipt.receipt_no}</Text>
+                    </View>
+                    <View style={styles.receiptMetaRow}>
+                      <Text style={styles.receiptMetaLabel}>Student Name:</Text>
+                      <Text style={styles.receiptMetaValue}>{session.name}</Text>
+                    </View>
+                    <View style={styles.receiptMetaRow}>
+                      <Text style={styles.receiptMetaLabel}>Course:</Text>
+                      <Text style={styles.receiptMetaValue}>{session.course}</Text>
+                    </View>
+                    <View style={styles.receiptMetaRow}>
+                      <Text style={styles.receiptMetaLabel}>Ledger / EF No:</Text>
+                      <Text style={styles.receiptMetaValue}>{session.ledger_no}</Text>
+                    </View>
+                    <View style={styles.receiptMetaRow}>
+                      <Text style={styles.receiptMetaLabel}>Date & Mode:</Text>
+                      <Text style={styles.receiptMetaValue}>{selectedReceipt.date} ({selectedReceipt.mode})</Text>
+                    </View>
+                    {selectedReceipt.remarks ? (
+                      <View style={styles.receiptMetaRow}>
+                        <Text style={styles.receiptMetaLabel}>Remarks:</Text>
+                        <Text style={styles.receiptMetaValue}>{selectedReceipt.remarks}</Text>
+                      </View>
+                    ) : null}
+                    <View style={[styles.receiptMetaRow, styles.receiptAmountRow]}>
+                      <Text style={styles.receiptTotalLabel}>AMOUNT PAID:</Text>
+                      <Text style={styles.receiptTotalValue}>₹{Number(selectedReceipt.amount).toLocaleString('en-IN')}</Text>
+                    </View>
+                  </View>
+
+                  {/* QR CODE VERIFICATION BOX */}
+                  <View style={styles.qrVerificationBox}>
+                    <Text style={styles.qrBoxTitle}>OFFICIAL VERIFICATION QR</Text>
+                    <Text style={styles.qrBoxSubtitle}>Scan with any camera or QR scanner to verify receipt authenticity</Text>
+                    <View style={styles.qrWrapper}>
+                      <QRCode 
+                        value={`${RECEIPT_BASE_URL}?ef_id=${efId}&pid=${selectedReceipt.receipt_no}`}
+                        size={150}
+                        color="#0f172a"
+                        backgroundColor="#ffffff"
+                      />
+                    </View>
+                    <Text style={styles.qrCaption}>Scan to view verified digital receipt</Text>
+                  </View>
+
+                  {/* ACTION BUTTONS */}
+                  <View style={styles.modalActionButtons}>
+                    <TouchableOpacity 
+                      style={styles.openBrowserBtn}
+                      onPress={() => {
+                        const url = `${RECEIPT_BASE_URL}?ef_id=${efId}&pid=${selectedReceipt.receipt_no}`;
+                        Linking.openURL(url).catch(err => Alert.alert('Error', 'Unable to open browser'));
+                      }}
+                    >
+                      <Text style={styles.openBrowserBtnText}>🌐 Open in Web Browser</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={styles.shareBtn}
+                      onPress={() => {
+                        const url = `${RECEIPT_BASE_URL}?ef_id=${efId}&pid=${selectedReceipt.receipt_no}`;
+                        Share.share({
+                          message: `DOT-CMC Payment Receipt #${selectedReceipt.receipt_no} for ${session.name} (Amount: ₹${selectedReceipt.amount}). View here: ${url}`
+                        });
+                      }}
+                    >
+                      <Text style={styles.shareBtnText}>📤 Share Link</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+        )}
       </SafeAreaView>
     );
   }
@@ -347,6 +492,10 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -355,6 +504,70 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  // FIXED MODERN TOPBAR
+  topbarContainer: {
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    paddingBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  topbarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  topbarEmblem: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: '#60a5fa',
+  },
+  topbarEmblemText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  topbarTextContainer: {
+    flex: 1,
+  },
+  topbarBrand: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  topbarStudentName: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  topbarLogoutBtn: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  topbarLogoutText: {
+    color: '#f87171',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
   header: {
     backgroundColor: '#1e3a8a',
     padding: 20,
@@ -464,23 +677,51 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900',
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 10,
+    marginLeft: 4,
+  },
   sectionHeader: {
     fontSize: 12,
     fontWeight: '800',
     color: '#64748b',
     letterSpacing: 1,
-    marginBottom: 10,
-    marginLeft: 4,
+  },
+  sectionHeaderHint: {
+    fontSize: 11,
+    color: '#2563eb',
+    fontWeight: '600',
   },
   paymentCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 14,
+    padding: 15,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  qrBadge: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  qrBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#2563eb',
   },
   receiptTitle: {
     fontSize: 14,
@@ -501,6 +742,183 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#10b981',
+    textAlign: 'right',
+  },
+  viewReceiptLink: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563eb',
+    marginTop: 3,
+  },
+
+  // RECEIPT MODAL & QR VERIFICATION STYLES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  receiptModalContainer: {
+    width: '100%',
+    maxHeight: '90%',
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  receiptModalHeader: {
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  receiptModalBrand: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  receiptModalSubtitle: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  receiptCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  receiptCloseText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  receiptModalScroll: {
+    padding: 20,
+  },
+  receiptMetaCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 18,
+  },
+  receiptMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  receiptMetaLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  receiptMetaValue: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '700',
+  },
+  receiptAmountRow: {
+    borderBottomWidth: 0,
+    paddingTop: 8,
+    marginTop: 4,
+    alignItems: 'center',
+  },
+  receiptTotalLabel: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#0f172a',
+  },
+  receiptTotalValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#10b981',
+  },
+  qrVerificationBox: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderStyle: 'dashed',
+    marginBottom: 20,
+  },
+  qrBoxTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.8,
+  },
+  qrBoxSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 14,
+    paddingHorizontal: 10,
+  },
+  qrWrapper: {
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  qrCaption: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 10,
+    fontWeight: '600',
+  },
+  modalActionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  openBrowserBtn: {
+    flex: 1,
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  openBrowserBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  shareBtn: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  shareBtnText: {
+    color: '#0f172a',
+    fontSize: 12,
+    fontWeight: '700',
   },
   emptyCard: {
     padding: 24,

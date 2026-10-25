@@ -801,6 +801,7 @@ Class Action {
 				'msg' => 'Login Successful',
 				'student' => [
 					'id' => $student['id'],
+					'ef_id' => $student['ef_id'],
 					'name' => ucwords($student['name']),
 					'roll_no' => $student['id_no'],
 					'contact' => $student['contact'],
