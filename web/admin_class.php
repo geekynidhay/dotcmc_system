@@ -750,21 +750,21 @@ Class Action {
 
 	function verify_student_otp(){
 		extract($_POST);
-		if(empty($student_id) || empty($otp)){
-			return json_encode(['status' => 0, 'msg' => 'Student and 4-digit OTP are required']);
+		if(empty($otp)){
+			return json_encode(['status' => 0, 'msg' => '4-digit OTP is required']);
 		}
-		$student_id = intval($student_id);
 		$otp = preg_replace('/[^0-9]/', '', $otp); // Strictly digits only
 		$now = date('Y-m-d H:i:s');
 
-		// Check matching unexpired OTP
-		$check = $this->db->query("SELECT * FROM student_login_otps WHERE student_id = $student_id AND otp = '$otp' AND expires_at >= '$now' LIMIT 1");
+		// Look up OTP directly by the 4-digit code
+		$check = $this->db->query("SELECT * FROM student_login_otps WHERE otp = '$otp' AND expires_at >= '$now' ORDER BY id DESC LIMIT 1");
 
 		if($check && $check->num_rows > 0){
 			$otp_row = $check->fetch_assoc();
+			$student_id = intval($otp_row['student_id']);
 
 			// Destroy OTP immediately so it cannot be used again
-			$this->db->query("DELETE FROM student_login_otps WHERE student_id = $student_id");
+			$this->db->query("DELETE FROM student_login_otps WHERE id = " . $otp_row['id']);
 
 			// Fetch full student profile and fee breakdown
 			$s_qry = $this->db->query("
