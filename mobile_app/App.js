@@ -15,8 +15,12 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Endpoint pointing to your dev server
-const API_BASE = 'http://192.168.1.17:8080/ajax.php';
+// Primary endpoint: tries reverse localhost first (for USB/Android Studio), then fallback to LAN Wi-Fi
+const ENDPOINTS = [
+  'http://localhost:8080/ajax.php',
+  'http://192.168.1.17:8080/ajax.php',
+  'http://10.0.2.2:8080/ajax.php' // Standard Android Emulator host loopback
+];
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -57,28 +61,49 @@ export default function App() {
     }
 
     setVerifying(true);
-    try {
-      const formData = new FormData();
-      formData.append('otp', otp);
+    let success = false;
+    let lastError = null;
+    let responseData = null;
 
-      const response = await fetch(`${API_BASE}?action=verify_student_otp`, {
-        method: 'POST',
-        body: formData,
-      });
+    // Try all reachable endpoints (USB adb reverse localhost -> WiFi LAN IP -> Emulator loopback)
+    for (const url of ENDPOINTS) {
+      try {
+        const formData = new FormData();
+        formData.append('otp', otp);
 
-      const res = await response.json();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      if (res.status === 1 && res.student) {
-        // Show student details for confirmation
-        setFetchedStudent(res.student);
+        const response = await fetch(`${url}?action=verify_student_otp`, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        const res = await response.json();
+        responseData = res;
+        success = true;
+        break;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    setVerifying(false);
+
+    if (success && responseData) {
+      if (responseData.status === 1 && responseData.student) {
+        setFetchedStudent(responseData.student);
         setScreenState('preview_verify');
       } else {
-        Alert.alert('Invalid OTP', res.msg || 'The OTP is invalid or expired. Please ask admin to generate a new 30-second code.');
+        Alert.alert('Invalid OTP', responseData.msg || 'The OTP is invalid or expired. Please ask admin to generate a new 30-second code.');
       }
-    } catch (e) {
-      Alert.alert('Network Error', 'Unable to connect to center server. Make sure phone is connected to the same WiFi network.');
-    } finally {
-      setVerifying(false);
+    } else {
+      Alert.alert(
+        'Connection Error', 
+        `Could not reach server.\n1. If connected via USB: run 'adb reverse tcp:8080 tcp:8080'.\n2. If on WiFi: Ensure phone and Mac are on the same Wi-Fi network.\nDetails: ${lastError ? lastError.message : 'Timeout'}`
+      );
     }
   }
 
