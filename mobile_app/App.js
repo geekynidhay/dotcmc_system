@@ -161,10 +161,13 @@ export default function App() {
     const efId = session.ef_id || session.id;
 
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
+      <View style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
         
-        {/* PREMIUM FIXED TOPBAR */}
+        {/* SAFE STATUSBAR FILLER FOR ANDROID & IOS */}
+        <SafeAreaView style={{ backgroundColor: '#ffffff' }} />
+
+        {/* CLEAN MODERN BRIGHT TOPBAR */}
         <View style={styles.topbarContainer}>
           <View style={styles.topbarLeft}>
             <View style={styles.topbarEmblem}>
@@ -366,7 +369,7 @@ export default function App() {
             </View>
           </Modal>
         )}
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -494,7 +497,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
   },
   container: {
     flex: 1,
@@ -505,17 +508,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // FIXED MODERN TOPBAR
+  // CLEAN BRIGHT MODERN TOPBAR (SAFE FROM NOTIFICATION BAR)
   topbarContainer: {
-    backgroundColor: '#0f172a',
-    paddingHorizontal: 18,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ? StatusBar.currentHeight + 8 : 16) : 10,
     paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 3,
   },
   topbarLeft: {
     flexDirection: 'row',
@@ -523,15 +531,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topbarEmblem: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: 10,
     backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    borderWidth: 1.5,
-    borderColor: '#60a5fa',
   },
   topbarEmblemText: {
     color: '#ffffff',
@@ -543,40 +549,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topbarBrand: {
-    color: '#94a3b8',
+    color: '#64748b',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.2,
   },
   topbarStudentName: {
-    color: '#ffffff',
-    fontSize: 16,
+    color: '#0f172a',
+    fontSize: 17,
     fontWeight: '800',
     marginTop: 1,
   },
   topbarLogoutBtn: {
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#fee2e2',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
   },
   topbarLogoutText: {
-    color: '#f87171',
+    color: '#dc2626',
     fontSize: 12,
     fontWeight: '700',
   },
 
   header: {
-    backgroundColor: '#1e3a8a',
+    backgroundColor: '#2563eb',
     padding: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   headerSubtitle: {
-    color: '#93c5fd',
+    color: '#bfdbfe',
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1,
@@ -588,7 +592,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   logoutBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -600,6 +604,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    backgroundColor: '#f8fafc',
   },
   card: {
     backgroundColor: '#ffffff',
@@ -616,7 +621,7 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
@@ -630,14 +635,16 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '600',
   },
+  // CLEAN VIBRANT FEE CARD (NOT DARK)
   feeCard: {
-    backgroundColor: '#0f172a',
-    borderColor: '#1e293b',
+    backgroundColor: '#ffffff',
+    borderColor: '#bfdbfe',
+    borderWidth: 1.5,
   },
   feeCardTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#94a3b8',
+    color: '#2563eb',
     letterSpacing: 1,
     marginBottom: 12,
   },
@@ -649,18 +656,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   feeLabel: {
-    color: '#94a3b8',
+    color: '#64748b',
     fontSize: 12,
+    fontWeight: '500',
   },
   feeAmount: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: '800',
+    color: '#0f172a',
+    fontSize: 22,
+    fontWeight: '900',
     marginTop: 4,
   },
   divider: {
     height: 1,
-    backgroundColor: '#334155',
+    backgroundColor: '#e2e8f0',
     marginVertical: 12,
   },
   balanceRow: {
@@ -669,9 +677,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   balanceLabel: {
-    color: '#e2e8f0',
+    color: '#475569',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   balanceAmount: {
     fontSize: 22,
@@ -771,7 +779,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   receiptModalHeader: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#2563eb',
     paddingHorizontal: 20,
     paddingVertical: 16,
     flexDirection: 'row',
@@ -785,7 +793,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   receiptModalSubtitle: {
-    color: '#94a3b8',
+    color: '#bfdbfe',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1,
@@ -795,7 +803,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
