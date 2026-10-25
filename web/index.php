@@ -257,68 +257,87 @@ window._conf = function($msg='',$func='',$params = []){
 </div>
 <script src="assets/js/html5-qrcode.min.js"></script>
 <script>
-  let html5QrcodeScanner = null;
+  let html5QrCode = null;
 
   $('#scan-qr-btn').click(function(){
       $('#qrScannerModal').modal('show');
-      
-      if (!html5QrcodeScanner) {
-          html5QrcodeScanner = new Html5QrcodeScanner(
-              "qr-reader", 
-              { 
-                  fps: 30, // Increased FPS for better capture on low quality webcams
-                  formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ], // Strictly only look for QR codes to save CPU
-                  aspectRatio: 1.0
-              }, 
-              false);
+  });
+
+  $('#qrScannerModal').on('shown.bs.modal', function () {
+      if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("qr-reader");
       }
       
-      html5QrcodeScanner.render(function(decodedText, decodedResult) {
-          // Try to extract EFID and PID from either new URL format or old text format
-          let efidMatch = decodedText.match(/ef_id=(\d+)/) || decodedText.match(/\[EFID:(\d+)\]/);
-          let pidMatch = decodedText.match(/pid=(\d+)/) || decodedText.match(/\[PID:(\d+)\]/);
-          
-          if(efidMatch && pidMatch) {
-              let ef_id = efidMatch[1];
-              let pid = pidMatch[1];
+      const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+      
+      html5QrCode.start(
+          { facingMode: "environment" }, 
+          config, 
+          function(decodedText, decodedResult) {
+              // Extract EFID and PID
+              let efidMatch = decodedText.match(/ef_id=(\d+)/) || decodedText.match(/\[EFID:(\d+)\]/);
+              let pidMatch = decodedText.match(/pid=(\d+)/) || decodedText.match(/\[PID:(\d+)\]/);
               
-              html5QrcodeScanner.clear();
-              $('#qrScannerModal').modal('hide');
-              uni_modal('Payment Details','receipt.php?ef_id='+ef_id+'&pid='+pid);
-          } else {
-              // Old QR fallback
-              let receiptMatch = decodedText.match(/Receipt No:\s*(\d+)/);
-              if (receiptMatch) {
-                  let receiptNo = receiptMatch[1];
-                  $.ajax({
-                      url: 'find_receipt.php',
-                      method: 'POST',
-                      data: { receipt_no: receiptNo },
-                      success: function(resp) {
-                          if (resp) {
-                              let res = JSON.parse(resp);
-                              if (res.status == 1) {
-                                  html5QrcodeScanner.clear();
-                                  $('#qrScannerModal').modal('hide');
-                                  uni_modal('Payment Details','receipt.php?ef_id='+res.ef_id+'&pid='+res.pid);
-                              } else {
-                                  alert_toast("Old Receipt ID Not Found", "danger");
+              if(efidMatch && pidMatch) {
+                  let ef_id = efidMatch[1];
+                  let pid = pidMatch[1];
+                  
+                  stopScannerAndClose();
+                  uni_modal('Payment Details', 'receipt.php?ef_id=' + ef_id + '&pid=' + pid);
+              } else {
+                  // Fallback for Receipt No
+                  let receiptMatch = decodedText.match(/Receipt No:\s*(\d+)/);
+                  if (receiptMatch) {
+                      let receiptNo = receiptMatch[1];
+                      $.ajax({
+                          url: 'find_receipt.php',
+                          method: 'POST',
+                          data: { receipt_no: receiptNo },
+                          success: function(resp) {
+                              if (resp) {
+                                  try {
+                                      let res = JSON.parse(resp);
+                                      if (res.status == 1) {
+                                          stopScannerAndClose();
+                                          uni_modal('Payment Details', 'receipt.php?ef_id=' + res.ef_id + '&pid=' + res.pid);
+                                      } else {
+                                          alert_toast("Receipt ID Not Found", "danger");
+                                      }
+                                  } catch(e) {
+                                      alert_toast("Invalid Receipt response", "danger");
+                                  }
                               }
                           }
-                      }
-                  });
-              } else {
-                  alert_toast("Invalid Receipt QR Code", "danger");
+                      });
+                  } else {
+                      alert_toast("Invalid QR Code: " + decodedText, "warning");
+                  }
               }
+          },
+          function(errorMessage) {
+              // scanning...
           }
-      }, function(errorMessage) {
-          // parse error, ignore
+      ).catch(err => {
+          console.error("Camera error:", err);
+          $('#qr-reader').html('<div class="p-4 text-center text-danger"><b>Unable to access camera:</b> ' + err + '<br><small>Make sure browser has camera permissions allowed.</small></div>');
       });
   });
 
+  function stopScannerAndClose() {
+      if (html5QrCode && html5QrCode.isScanning) {
+          html5QrCode.stop().then(() => {
+              $('#qrScannerModal').modal('hide');
+          }).catch(err => {
+              $('#qrScannerModal').modal('hide');
+          });
+      } else {
+          $('#qrScannerModal').modal('hide');
+      }
+  }
+
   $('#qrScannerModal').on('hidden.bs.modal', function () {
-      if(html5QrcodeScanner){
-          html5QrcodeScanner.clear();
+      if (html5QrCode && html5QrCode.isScanning) {
+          html5QrCode.stop().catch(err => console.log(err));
       }
   });
 </script>
