@@ -724,7 +724,7 @@ Class Action {
 			$where = "WHERE s.name LIKE '%$q%' OR s.id_no LIKE '%$q%' OR ef.ef_no LIKE '%$q%'";
 		}
 		$qry = $this->db->query("
-			SELECT s.id, s.id_no, s.name, ef.id as ef_id, ef.ef_no, COALESCE(c.course, 'General') as course
+			SELECT s.id, s.id_no, s.name, s.contact, s.whatsapp_number, ef.id as ef_id, ef.ef_no, COALESCE(c.course, 'General') as course
 			FROM student s
 			INNER JOIN student_ef_list ef ON ef.student_id = s.id
 			LEFT JOIN courses c ON c.id = ef.course_id
@@ -733,10 +733,12 @@ Class Action {
 		");
 		$list = [];
 		while($row = $qry->fetch_assoc()){
+			$mobile = !empty($row['contact']) ? $row['contact'] : $row['whatsapp_number'];
 			$list[] = [
 				'student_id' => $row['id'],
 				'roll_no' => $row['id_no'],
 				'name' => ucwords($row['name']),
+				'contact' => $mobile,
 				'ef_id' => $row['ef_id'],
 				'ledger_no' => $row['ef_no'],
 				'course' => $row['course']

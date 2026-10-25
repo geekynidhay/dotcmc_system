@@ -5,7 +5,6 @@ import {
   View, 
   TextInput, 
   TouchableOpacity, 
-  FlatList, 
   SafeAreaView, 
   ActivityIndicator, 
   Alert, 
@@ -16,23 +15,33 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Local dev server IP or production URL
-// For testing on physical phone via USB/WiFi, your Mac's IP or localhost
-const API_BASE = 'http://localhost:8080/ajax.php';
+// Connects to dev server running on Mac
+// 10.0.2.2 for Android Studio Emulator, or your Mac's LAN IP for physical device
+const API_BASE = 'http://192.168.1.17:8080/ajax.php';
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Search & Selection State
-  const [students, setStudents] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
+  // Screen 1: Student Lookup & Confirmation
+  // Step 1: Name search
+  const [nameInput, setNameInput] = useState('');
+  const [nameSuggestions, setNameSuggestions] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [searchingNames, setSearchingNames] = useState(false);
 
-  // OTP State
+  // Step 2: Ledger number field (separate)
+  const [ledgerInput, setLedgerInput] = useState('');
+
+  // Step 3: Verified phone from backend
+  const [confirmedMobile, setConfirmedMobile] = useState('');
+
+  // Screen state: 'lookup' -> 'otp_screen'
+  const [currentStep, setCurrentStep] = useState('lookup');
+
+  // Screen 2: 4-digit Numeric OTP State
   const [otp, setOtp] = useState('');
-  const [verifying, setVerifying] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   useEffect(() => {
     checkSavedSession();
@@ -51,43 +60,65 @@ export default function App() {
     }
   }
 
-  async function searchStudents(query) {
-    setSearchQuery(query);
-    if (query.trim().length < 2) {
-      setStudents([]);
+  // Smooth name search with no text resets
+  async function handleNameChange(text) {
+    setNameInput(text);
+    if (!text || text.trim().length < 2) {
+      setNameSuggestions([]);
       return;
     }
 
-    setSearching(true);
+    setSearchingNames(true);
     try {
-      const response = await fetch(`${API_BASE}?action=get_mobile_students&search=${encodeURIComponent(query)}`);
+      const response = await fetch(`${API_BASE}?action=get_mobile_students&search=${encodeURIComponent(text.trim())}`);
       const data = await response.json();
-      setStudents(data || []);
-    } catch (error) {
-      console.log('Search error:', error);
+      setNameSuggestions(data || []);
+    } catch (err) {
+      console.log('Search error:', err);
     } finally {
-      setSearching(false);
+      setSearchingNames(false);
     }
   }
 
+  // When student taps their name from suggestions
   function handleSelectStudent(student) {
     setSelectedStudent(student);
-    setStudents([]);
-    setSearchQuery(student.name);
+    setNameInput(student.name);
+    setNameSuggestions([]); // hide dropdown
+    setLedgerInput(student.ledger_no || ''); // auto-fill or let them see
+    setConfirmedMobile(student.contact || 'No phone registered');
+  }
+
+  // Proceed to Step 2: OTP Screen
+  function handleProceedToOtp() {
+    if (!selectedStudent) {
+      Alert.alert('Selection Required', 'Please type and select your name from the suggestions.');
+      return;
+    }
+    if (!ledgerInput.trim()) {
+      Alert.alert('Ledger Required', 'Please enter your Ledger Number.');
+      return;
+    }
+
+    // Verify ledger matches
+    if (ledgerInput.trim().toLowerCase() !== (selectedStudent.ledger_no || '').trim().toLowerCase()) {
+      Alert.alert('Ledger Mismatch', `The entered ledger number does not match ${selectedStudent.name}'s record. Please check again.`);
+      return;
+    }
+
+    // Go to OTP Screen
+    setCurrentStep('otp_screen');
     setOtp('');
   }
 
+  // Verify 4-digit OTP
   async function handleVerifyOtp() {
-    if (!selectedStudent) {
-      Alert.alert('Selection Required', 'Please search and select your student name first.');
-      return;
-    }
     if (otp.length !== 4) {
-      Alert.alert('Invalid OTP', 'Please enter the exact 4-digit numeric OTP provided by the admin.');
+      Alert.alert('4-Digit Required', 'Please enter the exact 4-digit OTP provided by center admin.');
       return;
     }
 
-    setVerifying(true);
+    setVerifyingOtp(true);
     try {
       const formData = new FormData();
       formData.append('student_id', selectedStudent.student_id);
@@ -101,7 +132,6 @@ export default function App() {
       const res = await response.json();
 
       if (res.status === 1) {
-        // Save session locally on phone
         await AsyncStorage.setItem('@dotcmc_student_session', JSON.stringify(res.student));
         setSession(res.student);
         Alert.alert('Welcome!', `Logged in successfully as ${res.student.name}`);
@@ -109,14 +139,14 @@ export default function App() {
         Alert.alert('Verification Failed', res.msg || 'Invalid or expired 30-second OTP.');
       }
     } catch (e) {
-      Alert.alert('Connection Error', 'Unable to reach the center server. Please make sure phone is on the same WiFi network as your server.');
+      Alert.alert('Server Error', 'Unable to reach center server. Make sure phone is on the same WiFi network.');
     } finally {
-      setVerifying(false);
+      setVerifyingOtp(false);
     }
   }
 
   async function handleLogout() {
-    Alert.alert('Logout', 'Are you sure you want to log out of your account on this device?', [
+    Alert.alert('Logout', 'Log out of your student account on this phone?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',
@@ -125,8 +155,11 @@ export default function App() {
           await AsyncStorage.removeItem('@dotcmc_student_session');
           setSession(null);
           setSelectedStudent(null);
-          setSearchQuery('');
+          setNameInput('');
+          setLedgerInput('');
+          setConfirmedMobile('');
           setOtp('');
+          setCurrentStep('lookup');
         }
       }
     ]);
@@ -140,12 +173,13 @@ export default function App() {
     );
   }
 
-  // LOGGED IN: STUDENT DASHBOARD
+  // ==========================================
+  // VIEW: LOGGED-IN DASHBOARD
+  // ==========================================
   if (session) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#1e3a8a" />
-        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerSubtitle}>DOT CMC STUDENT PORTAL</Text>
@@ -157,7 +191,6 @@ export default function App() {
         </View>
 
         <ScrollView style={styles.content}>
-          {/* Student Info Card */}
           <View style={styles.card}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Roll No / ID:</Text>
@@ -177,7 +210,6 @@ export default function App() {
             </View>
           </View>
 
-          {/* Fee Balance Card */}
           <View style={[styles.card, styles.feeCard]}>
             <Text style={styles.feeCardTitle}>FEE SUMMARY</Text>
             <View style={styles.feeGrid}>
@@ -199,7 +231,6 @@ export default function App() {
             </View>
           </View>
 
-          {/* Payment History List */}
           <Text style={styles.sectionHeader}>PAYMENT RECEIPTS</Text>
           {session.payments && session.payments.length > 0 ? (
             session.payments.map((p, idx) => (
@@ -224,7 +255,76 @@ export default function App() {
     );
   }
 
-  // LOGGED OUT: SECURE OTP LOGIN SCREEN
+  // ==========================================
+  // VIEW: STEP 2 - ENTER 4-DIGIT NUMERIC OTP
+  // ==========================================
+  if (currentStep === 'otp_screen') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={{ flex: 1 }}
+        >
+          <ScrollView contentContainerStyle={styles.loginContainer} keyboardShouldPersistTaps="handled">
+            <TouchableOpacity style={styles.backBtn} onPress={() => setCurrentStep('lookup')}>
+              <Text style={styles.backBtnText}>← Back to details</Text>
+            </TouchableOpacity>
+
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoText}>DC</Text>
+            </View>
+            <Text style={styles.brandTitle}>Enter Login OTP</Text>
+            <Text style={styles.brandSubtitle}>Verifying: {selectedStudent?.name}</Text>
+
+            <View style={styles.selectedStudentBox}>
+              <Text style={styles.selectedTitle}>Account Verified For:</Text>
+              <Text style={styles.selectedName}>{selectedStudent?.name}</Text>
+              <Text style={styles.selectedDetails}>Ledger: {ledgerInput} • Mobile: {confirmedMobile}</Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>ENTER 4-DIGIT OTP</Text>
+              <Text style={styles.otpHelper}>Ask Center Admin to click "Generate OTP" on dashboard</Text>
+              
+              {/* STRICTLY NUMERIC KEYPAD */}
+              <TextInput
+                style={styles.otpInput}
+                placeholder="••••"
+                placeholderTextColor="#cbd5e1"
+                value={otp}
+                onChangeText={(val) => setOtp(val.replace(/[^0-9]/g, ''))} // Strictly digits
+                keyboardType="number-pad" // Only numbers on iOS and Android
+                maxLength={4}
+                textAlign="center"
+                autoFocus={true}
+              />
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.primaryBtn, verifyingOtp && { opacity: 0.6 }]} 
+              onPress={handleVerifyOtp}
+              disabled={verifyingOtp}
+            >
+              {verifyingOtp ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.primaryBtnText}>Verify OTP & Complete Login</Text>
+              )}
+            </TouchableOpacity>
+
+            <Text style={styles.footerNote}>
+              ⏱️ 30-Second Single-Use OTP Protection. Prevents any other student from accessing your account.
+            </Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // ==========================================
+  // VIEW: STEP 1 - STUDENT NAME & LEDGER LOOKUP
+  // ==========================================
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -233,31 +333,30 @@ export default function App() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.loginContainer} keyboardShouldPersistTaps="handled">
-          {/* Logo Brand */}
           <View style={styles.logoBadge}>
             <Text style={styles.logoText}>DC</Text>
           </View>
           <Text style={styles.brandTitle}>DOT CMC</Text>
           <Text style={styles.brandSubtitle}>Student Mobile Portal</Text>
 
-          {/* Step 1: Search Name */}
+          {/* 1. Name Input Field */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>1. SEARCH YOUR FULL NAME</Text>
+            <Text style={styles.inputLabel}>1. STUDENT FULL NAME</Text>
             <TextInput
               style={styles.input}
-              placeholder="Type your name (e.g. Suhani, Raj...)"
+              placeholder="Search by your name (e.g. Suhani, Raj)..."
               placeholderTextColor="#94a3b8"
-              value={searchQuery}
-              onChangeText={searchStudents}
+              value={nameInput}
+              onChangeText={handleNameChange}
               autoCapitalize="words"
             />
-            {searching && <ActivityIndicator size="small" color="#1e3a8a" style={{ marginTop: 6 }} />}
+            {searchingNames && <ActivityIndicator size="small" color="#1e3a8a" style={{ marginTop: 6 }} />}
           </View>
 
-          {/* Results Dropdown */}
-          {students.length > 0 && (
+          {/* Real-time suggestions dropdown */}
+          {nameSuggestions.length > 0 && (
             <View style={styles.dropdownList}>
-              {students.map((item) => (
+              {nameSuggestions.map((item) => (
                 <TouchableOpacity
                   key={item.student_id}
                   style={styles.dropdownItem}
@@ -272,49 +371,40 @@ export default function App() {
             </View>
           )}
 
-          {/* Step 2: Show Selected Details */}
-          {selectedStudent && (
-            <View style={styles.selectedStudentBox}>
-              <Text style={styles.selectedTitle}>Selected Student Account:</Text>
-              <Text style={styles.selectedName}>{selectedStudent.name}</Text>
-              <Text style={styles.selectedDetails}>
-                Roll No: {selectedStudent.roll_no} | Ledger No: {selectedStudent.ledger_no}
-              </Text>
-              <Text style={styles.selectedCourse}>Course: {selectedStudent.course}</Text>
-            </View>
-          )}
-
-          {/* Step 3: 4-Digit Numeric OTP */}
+          {/* 2. Separate Ledger Number Field */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>2. ENTER 4-DIGIT LOGIN OTP</Text>
-            <Text style={styles.otpHelper}>Ask Center Admin to click "Generate OTP" on dashboard</Text>
+            <Text style={styles.inputLabel}>2. LEDGER NUMBER</Text>
             <TextInput
-              style={styles.otpInput}
-              placeholder="••••"
-              placeholderTextColor="#cbd5e1"
-              value={otp}
-              onChangeText={(val) => setOtp(val.replace(/[^0-9]/g, ''))} // Strictly numeric only
-              keyboardType="number-pad" // Opens numeric keypad on Android & iOS
-              maxLength={4}
-              textAlign="center"
+              style={styles.input}
+              placeholder="Enter your Ledger Number (e.g. JU22-01)"
+              placeholderTextColor="#94a3b8"
+              value={ledgerInput}
+              onChangeText={setLedgerInput}
+              autoCapitalize="characters"
             />
           </View>
 
-          {/* Submit Button */}
+          {/* 3. Confirm Mobile Number (Fetched from Backend) */}
+          {selectedStudent && (
+            <View style={styles.selectedStudentBox}>
+              <Text style={styles.selectedTitle}>3. CONFIRM REGISTERED MOBILE (FROM RECORD):</Text>
+              <Text style={styles.confirmedMobileText}>📱 {confirmedMobile}</Text>
+              <Text style={styles.selectedDetails}>
+                Course: {selectedStudent.course} • Roll No: {selectedStudent.roll_no}
+              </Text>
+            </View>
+          )}
+
+          {/* Proceed Button */}
           <TouchableOpacity 
-            style={[styles.primaryBtn, verifying && { opacity: 0.6 }]} 
-            onPress={handleVerifyOtp}
-            disabled={verifying}
+            style={[styles.primaryBtn, !selectedStudent && { opacity: 0.6 }]} 
+            onPress={handleProceedToOtp}
           >
-            {verifying ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.primaryBtnText}>Verify & Login to Student Account</Text>
-            )}
+            <Text style={styles.primaryBtnText}>Proceed to OTP Verification →</Text>
           </TouchableOpacity>
 
           <Text style={styles.footerNote}>
-            🔒 30-Second Single-Use OTP Protection: Prevents any other student from accessing your account.
+            After selecting your Name and Ledger number, you will enter the 4-digit OTP provided by center admin.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -493,7 +583,16 @@ const styles = StyleSheet.create({
   loginContainer: {
     padding: 24,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    paddingVertical: 6,
+  },
+  backBtnText: {
+    color: '#2563eb',
+    fontSize: 14,
+    fontWeight: '600',
   },
   logoBadge: {
     width: 64,
@@ -502,7 +601,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e3a8a',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 10,
     marginBottom: 12,
   },
   logoText: {
@@ -518,7 +617,7 @@ const styles = StyleSheet.create({
   brandSubtitle: {
     fontSize: 14,
     color: '#64748b',
-    marginBottom: 28,
+    marginBottom: 24,
   },
   inputGroup: {
     width: '100%',
@@ -555,6 +654,10 @@ const styles = StyleSheet.create({
     marginTop: -8,
     marginBottom: 16,
     maxHeight: 180,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   dropdownItem: {
     padding: 12,
@@ -584,23 +687,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#1e40af',
+    letterSpacing: 0.5,
   },
-  selectedName: {
-    fontSize: 16,
+  confirmedMobileText: {
+    fontSize: 18,
     fontWeight: '800',
     color: '#1e3a8a',
-    marginTop: 2,
+    marginTop: 4,
   },
   selectedDetails: {
     fontSize: 12,
     color: '#3b82f6',
-    marginTop: 2,
-  },
-  selectedCourse: {
-    fontSize: 12,
-    color: '#1d4ed8',
-    fontWeight: '600',
-    marginTop: 2,
+    marginTop: 4,
   },
   otpInput: {
     backgroundColor: '#ffffff',
@@ -610,7 +708,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 32,
     fontWeight: '900',
-    letterSpacing: 12,
+    letterSpacing: 14,
     color: '#1e3a8a',
   },
   primaryBtn: {
