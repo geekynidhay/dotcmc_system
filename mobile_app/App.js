@@ -18,7 +18,8 @@ import {
   Share,
   BackHandler,
   Animated,
-  Dimensions
+  Dimensions,
+  TouchableWithoutFeedback
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
@@ -528,13 +529,11 @@ export default function App() {
 
         {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION */}
         {isDrawerOpen && (
-          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-            {/* BACKDROP */}
-            <TouchableOpacity 
-              style={styles.drawerBackdrop}
-              activeOpacity={1}
-              onPress={() => closeDrawer()}
-            />
+          <View style={styles.drawerRootOverlay}>
+            {/* FULL SCREEN BACKDROP TO DISMISS ON OUTSIDE TAP */}
+            <TouchableWithoutFeedback onPress={() => closeDrawer()}>
+              <View style={styles.drawerBackdrop} />
+            </TouchableWithoutFeedback>
             
             {/* SLIDING DRAWER CONTAINER */}
             <Animated.View style={[
@@ -1002,10 +1001,13 @@ const styles = StyleSheet.create({
   },
 
   // DRAWER MODAL STYLES
+  drawerRootOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 998,
+  },
   drawerBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15, 23, 42, 0.55)',
-    zIndex: 998,
   },
   drawerContent: {
     position: 'absolute',
