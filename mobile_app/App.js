@@ -15,7 +15,8 @@ import {
   Platform,
   Modal,
   Linking,
-  Share
+  Share,
+  BackHandler
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
@@ -58,6 +59,28 @@ export default function App() {
   useEffect(() => {
     checkSavedSession();
   }, []);
+
+  // Handle hardware & in-app Back Button
+  useEffect(() => {
+    const onBackPress = () => {
+      if (selectedReceipt) {
+        setSelectedReceipt(null);
+        return true;
+      }
+      if (isDrawerOpen) {
+        setIsDrawerOpen(false);
+        return true;
+      }
+      if (activeTab !== 'home') {
+        setActiveTab('home');
+        return true;
+      }
+      return false; // Exit app if already on home
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [selectedReceipt, isDrawerOpen, activeTab]);
 
   async function checkSavedSession() {
     try {
@@ -196,16 +219,27 @@ export default function App() {
           borderBottomColor: themeBorder
         }]}>
           <View style={styles.topbarLeft}>
-            {/* HAMBURGER BUTTON TO OPEN LEFT DRAWER */}
-            <TouchableOpacity 
-              style={styles.hamburgerBtn}
-              onPress={() => setIsDrawerOpen(true)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
-              <View style={[styles.hamburgerLine, { backgroundColor: themeText, width: 16 }]} />
-              <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
-            </TouchableOpacity>
+            {/* BACK BUTTON OR HAMBURGER */}
+            {activeTab !== 'home' ? (
+              <TouchableOpacity 
+                style={styles.backNavBtn}
+                onPress={() => setActiveTab('home')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.backNavArrow, { color: '#2563eb' }]}>‹</Text>
+                <Text style={[styles.backNavText, { color: '#2563eb' }]}>Back</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.hamburgerBtn}
+                onPress={() => setIsDrawerOpen(true)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
+                <View style={[styles.hamburgerLine, { backgroundColor: themeText, width: 16 }]} />
+                <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
+              </TouchableOpacity>
+            )}
 
             <View style={[styles.topbarEmblem, { backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', borderColor: themeBorder }]}>
               <Image source={APP_LOGO} style={styles.topbarLogoImage} resizeMode="contain" />
@@ -838,7 +872,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // HAMBURGER & NOTIFICATION BELL
+  // TOPBAR CONTAINER & BACK NAV
+  topbarContainer: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ? StatusBar.currentHeight + 6 : 14) : 8,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  backNavBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginRight: 6,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+  },
+  backNavArrow: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginRight: 2,
+    marginTop: -2,
+  },
+  backNavText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
   hamburgerBtn: {
     padding: 8,
     marginRight: 6,
