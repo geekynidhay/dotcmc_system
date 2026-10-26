@@ -62,9 +62,10 @@ export default function App() {
 
   function openDrawer() {
     setIsDrawerOpen(true);
+    slideAnim.setValue(-DRAWER_WIDTH);
     Animated.timing(slideAnim, {
       toValue: 0,
-      duration: 260,
+      duration: 250,
       useNativeDriver: true,
     }).start();
   }
@@ -72,9 +73,9 @@ export default function App() {
   function closeDrawer(callback) {
     Animated.timing(slideAnim, {
       toValue: -DRAWER_WIDTH,
-      duration: 220,
+      duration: 200,
       useNativeDriver: true,
-    }).start(() => {
+    }).start(({ finished }) => {
       setIsDrawerOpen(false);
       if (callback) callback();
     });
@@ -525,14 +526,9 @@ export default function App() {
           <View style={{ height: 60 }} />
         </ScrollView>
 
-        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION IN TOP-LEVEL MODAL */}
-        <Modal
-          visible={isDrawerOpen}
-          transparent={true}
-          animationType="none"
-          onRequestClose={() => closeDrawer()}
-        >
-          <View style={styles.drawerOverlay}>
+        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION */}
+        {isDrawerOpen && (
+          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
             {/* BACKDROP */}
             <TouchableOpacity 
               style={styles.drawerBackdrop}
@@ -634,7 +630,7 @@ export default function App() {
               </ScrollView>
             </Animated.View>
           </View>
-        </Modal>
+        )}
 
         {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
         {selectedReceipt && (
@@ -900,16 +896,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   hamburgerBtn: {
-    padding: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginRight: 6,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 8,
   },
   hamburgerLine: {
-    width: 20,
-    height: 2.5,
+    width: 22,
+    height: 3,
     borderRadius: 2,
-    marginVertical: 2,
+    marginVertical: 2.2,
   },
   bellBtn: {
     position: 'relative',
@@ -1004,14 +1002,10 @@ const styles = StyleSheet.create({
   },
 
   // DRAWER MODAL STYLES
-  drawerOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-  },
   drawerBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    zIndex: 998,
   },
   drawerContent: {
     position: 'absolute',
@@ -1021,13 +1015,13 @@ const styles = StyleSheet.create({
     width: '78%',
     maxWidth: 300,
     height: '100%',
-    paddingTop: Platform.OS === 'android' ? 40 : 50,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 36) : 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 16,
+    elevation: 24,
     zIndex: 999,
   },
   drawerHeader: {
