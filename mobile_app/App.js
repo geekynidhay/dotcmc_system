@@ -526,24 +526,26 @@ export default function App() {
           <View style={{ height: 60 }} />
         </ScrollView>
 
-        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION */}
+        {/* FULL SCREEN BACKDROP: Only active when drawer is open */}
         {isDrawerOpen && (
-          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-            {/* FULL SCREEN BACKDROP: Tapping outside drawer immediately closes it */}
-            <TouchableOpacity 
-              style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.55)' }]}
-              activeOpacity={1}
-              onPress={() => closeDrawer()}
-            />
-            
-            {/* SLIDING DRAWER CONTAINER */}
-            <Animated.View style={[
-              styles.drawerContent, 
-              { 
-                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-                transform: [{ translateX: slideAnim }]
-              }
-            ]}>
+          <TouchableOpacity 
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.55)', zIndex: 998 }]}
+            activeOpacity={1}
+            onPress={() => closeDrawer()}
+          />
+        )}
+        
+        {/* SLIDING DRAWER CONTAINER (ALWAYS MOUNTED FOR INSTANT SLIDE-IN) */}
+        <Animated.View 
+          style={[
+            styles.drawerContent, 
+            { 
+              backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+              transform: [{ translateX: slideAnim }]
+            }
+          ]}
+          pointerEvents={isDrawerOpen ? 'auto' : 'none'}
+        >
               {/* DRAWER HEADER */}
               <View style={[styles.drawerHeader, { borderBottomColor: themeBorder }]}>
                 <Image source={APP_LOGO} style={styles.drawerLogoImage} resizeMode="contain" />
@@ -629,8 +631,6 @@ export default function App() {
                 </TouchableOpacity>
               </ScrollView>
             </Animated.View>
-          </View>
-        )}
 
         {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
         {selectedReceipt && (
