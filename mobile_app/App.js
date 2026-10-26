@@ -61,10 +61,11 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   function openDrawer() {
+    slideAnim.setValue(-DRAWER_WIDTH);
     setIsDrawerOpen(true);
     Animated.timing(slideAnim, {
       toValue: 0,
-      duration: 260,
+      duration: 240,
       useNativeDriver: true,
     }).start();
   }
@@ -72,9 +73,9 @@ export default function App() {
   function closeDrawer(callback) {
     Animated.timing(slideAnim, {
       toValue: -DRAWER_WIDTH,
-      duration: 220,
+      duration: 200,
       useNativeDriver: true,
-    }).start(() => {
+    }).start(({ finished }) => {
       setIsDrawerOpen(false);
       if (callback) callback();
     });
