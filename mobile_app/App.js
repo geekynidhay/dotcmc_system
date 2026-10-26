@@ -527,22 +527,31 @@ export default function App() {
           <View style={{ height: 60 }} />
         </ScrollView>
 
-        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION */}
-        {isDrawerOpen && (
+        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION IN TRANSPARENT MODAL */}
+        <Modal
+          visible={isDrawerOpen}
+          transparent={true}
+          animationType="none"
+          onRequestClose={() => closeDrawer()}
+        >
           <View style={styles.drawerRootOverlay}>
             {/* FULL SCREEN BACKDROP TO DISMISS ON OUTSIDE TAP */}
-            <TouchableWithoutFeedback onPress={() => closeDrawer()}>
-              <View style={styles.drawerBackdrop} />
-            </TouchableWithoutFeedback>
+            <TouchableOpacity 
+              style={styles.drawerBackdrop}
+              activeOpacity={1}
+              onPress={() => closeDrawer()}
+            />
             
             {/* SLIDING DRAWER CONTAINER */}
-            <Animated.View style={[
-              styles.drawerContent, 
-              { 
-                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-                transform: [{ translateX: slideAnim }]
-              }
-            ]}>
+            <Animated.View 
+              style={[
+                styles.drawerContent, 
+                { 
+                  backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+                  transform: [{ translateX: slideAnim }]
+                }
+              ]}
+            >
               {/* DRAWER HEADER */}
               <View style={[styles.drawerHeader, { borderBottomColor: themeBorder }]}>
                 <Image source={APP_LOGO} style={styles.drawerLogoImage} resizeMode="contain" />
@@ -629,7 +638,7 @@ export default function App() {
               </ScrollView>
             </Animated.View>
           </View>
-        )}
+        </Modal>
 
         {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
         {selectedReceipt && (
