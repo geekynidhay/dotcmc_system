@@ -50,6 +50,11 @@ export default function App() {
   // Selected receipt for modal preview
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
+  // Left Drawer Navigation State
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'material' | 'fees' | 'pay_online' | 'attendance' | 'settings'
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   useEffect(() => {
     checkSavedSession();
   }, []);
@@ -166,108 +171,445 @@ export default function App() {
   // ==========================================
   if (session) {
     const efId = session.ef_id || session.id;
+    const studentNameCaps = (session.name || '').toUpperCase();
+
+    const themeBg = isDarkMode ? '#0f172a' : '#f8fafc';
+    const themeCard = isDarkMode ? '#1e293b' : '#ffffff';
+    const themeBorder = isDarkMode ? '#334155' : '#e2e8f0';
+    const themeText = isDarkMode ? '#f8fafc' : '#0f172a';
+    const themeTextMuted = isDarkMode ? '#94a3b8' : '#64748b';
 
     return (
-      <View style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+      <View style={[styles.safeArea, { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }]}>
+        <StatusBar 
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+          backgroundColor={isDarkMode ? '#0f172a' : '#ffffff'} 
+          translucent={false} 
+        />
         
-        {/* SAFE STATUSBAR FILLER FOR ANDROID & IOS */}
-        <SafeAreaView style={{ backgroundColor: '#ffffff' }} />
+        {/* SAFE STATUSBAR FILLER */}
+        <SafeAreaView style={{ backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }} />
 
-        {/* CLEAN MODERN BRIGHT TOPBAR */}
-        <View style={styles.topbarContainer}>
+        {/* TOPBAR WITH HAMBURGER DRAWER TRIGGER & NOTIFICATION BELL */}
+        <View style={[styles.topbarContainer, { 
+          backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+          borderBottomColor: themeBorder
+        }]}>
           <View style={styles.topbarLeft}>
-            <View style={styles.topbarEmblem}>
+            {/* HAMBURGER BUTTON TO OPEN LEFT DRAWER */}
+            <TouchableOpacity 
+              style={styles.hamburgerBtn}
+              onPress={() => setIsDrawerOpen(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
+              <View style={[styles.hamburgerLine, { backgroundColor: themeText, width: 16 }]} />
+              <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
+            </TouchableOpacity>
+
+            <View style={[styles.topbarEmblem, { backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', borderColor: themeBorder }]}>
               <Image source={APP_LOGO} style={styles.topbarLogoImage} resizeMode="contain" />
             </View>
             <View style={styles.topbarTextContainer}>
               <Text style={styles.topbarBrand}>DOT-CMC COMPUTER</Text>
-              <Text style={styles.topbarStudentName} numberOfLines={1}>{session.name}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.topbarLogoutBtn} onPress={handleLogout} activeOpacity={0.7}>
-            <Text style={styles.topbarLogoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* PROFILE CARD */}
-          <View style={styles.card}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Ledger No:</Text>
-              <Text style={[styles.infoValue, { fontWeight: '800', color: '#0f172a' }]}>{session.ledger_no}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Course:</Text>
-              <Text style={[styles.infoValue, { color: '#2563eb', fontWeight: 'bold' }]}>{session.course}</Text>
-            </View>
-            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.infoLabel}>Registered Mobile:</Text>
-              <Text style={styles.infoValue}>{session.contact || 'N/A'}</Text>
-            </View>
-          </View>
-
-          {/* FEE SUMMARY CARD */}
-          <View style={[styles.card, styles.feeCard]}>
-            <Text style={styles.feeCardTitle}>FEE SUMMARY</Text>
-            <View style={styles.feeGrid}>
-              <View style={styles.feeCol}>
-                <Text style={styles.feeLabel}>Total Course Fee</Text>
-                <Text style={styles.feeAmount}>₹{Number(session.total_fee || 0).toLocaleString('en-IN')}</Text>
-              </View>
-              <View style={styles.feeCol}>
-                <Text style={styles.feeLabel}>Total Paid</Text>
-                <Text style={[styles.feeAmount, { color: '#10b981' }]}>₹{Number(session.total_paid || 0).toLocaleString('en-IN')}</Text>
-              </View>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.balanceRow}>
-              <Text style={styles.balanceLabel}>Remaining Balance Due:</Text>
-              <Text style={[styles.balanceAmount, { color: session.balance > 0 ? '#ef4444' : '#10b981' }]}>
-                ₹{Number(session.balance || 0).toLocaleString('en-IN')}
+              <Text style={[styles.topbarStudentName, { color: themeText }]} numberOfLines={1}>
+                {activeTab === 'home' ? 'STUDENT PORTAL' : 
+                 activeTab === 'material' ? 'STUDY MATERIAL' :
+                 activeTab === 'fees' ? 'FEES LEDGER' :
+                 activeTab === 'pay_online' ? 'PAY ONLINE' :
+                 activeTab === 'attendance' ? 'MARK ATTENDANCE' : 'SETTINGS'}
               </Text>
             </View>
           </View>
 
-          {/* PAYMENT RECEIPTS LIST WITH TAP TO VIEW & QR */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeader}>PAYMENT RECEIPTS</Text>
-            <Text style={styles.sectionHeaderHint}>Tap receipt to view & QR</Text>
+          {/* NOTIFICATION BELL WITH UNREAD RED DOT */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TouchableOpacity 
+              style={styles.bellBtn}
+              onPress={() => Alert.alert('Notifications', 'No new YouTube or center notifications at this moment.')}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 18 }}>🔔</Text>
+              <View style={styles.unreadDot} />
+            </TouchableOpacity>
           </View>
+        </View>
 
-          {session.payments && session.payments.length > 0 ? (
-            session.payments.map((p, idx) => (
-              <TouchableOpacity 
-                key={idx} 
-                style={styles.paymentCard}
-                activeOpacity={0.7}
-                onPress={() => setSelectedReceipt(p)}
-              >
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.receiptTitle}>Receipt #{p.receipt_no}</Text>
-                    <View style={styles.qrBadge}>
-                      <Text style={styles.qrBadgeText}>QR</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.receiptDate}>{p.date} • {p.mode}</Text>
-                  {p.remarks ? <Text style={styles.receiptRemarks}>Receipt No.: {p.remarks}</Text> : null}
-                </View>
+        {/* MAIN BODY CONTENT DEPENDING ON ACTIVE TAB */}
+        <ScrollView style={[styles.content, { backgroundColor: themeBg }]} showsVerticalScrollIndicator={false}>
+          
+          {/* ============================================================== */}
+          {/* TAB 1: HOME */}
+          {/* ============================================================== */}
+          {activeTab === 'home' && (
+            <View>
+              {/* GREETING: HI, [STUDENT NAME] (ALL CAPS) */}
+              <View style={[styles.greetingCard, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                <Text style={styles.greetingSubtitle}>WELCOME BACK</Text>
+                <Text style={[styles.greetingTitle, { color: themeText }]}>HI, {studentNameCaps}</Text>
+                <Text style={[styles.greetingMeta, { color: themeTextMuted }]}>
+                  Course: <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>{session.course}</Text> • Ledger: <Text style={{ fontWeight: 'bold' }}>{session.ledger_no}</Text>
+                </Text>
 
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.receiptAmount}>₹{Number(p.amount || 0).toLocaleString('en-IN')}</Text>
-                  <Text style={styles.viewReceiptLink}>View Receipt ›</Text>
+                {/* COMPLETE REGISTRATION DETAILS BUTTON */}
+                <TouchableOpacity 
+                  style={styles.completeRegBtn}
+                  onPress={() => Alert.alert('Complete Registration Details', 'The complete registration form with photo upload and one-time locked fields is ready to be filled.')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.completeRegBtnText}>📝 Complete Registration Details →</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* PROFILE SUMMARY CARD */}
+              <View style={[styles.card, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Student Name:</Text>
+                  <Text style={[styles.infoValue, { color: themeText, fontWeight: '800' }]}>{studentNameCaps}</Text>
                 </View>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No payments recorded yet.</Text>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Ledger No:</Text>
+                  <Text style={[styles.infoValue, { fontWeight: '800', color: themeText }]}>{session.ledger_no}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Course:</Text>
+                  <Text style={[styles.infoValue, { color: '#2563eb', fontWeight: 'bold' }]}>{session.course}</Text>
+                </View>
+                <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+                  <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Registered Mobile:</Text>
+                  <Text style={[styles.infoValue, { color: themeText }]}>{session.contact || 'N/A'}</Text>
+                </View>
+              </View>
+
+              {/* QUICK SHORTCUTS GRID */}
+              <View style={styles.shortcutsGrid}>
+                <TouchableOpacity 
+                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
+                  onPress={() => setActiveTab('fees')}
+                >
+                  <Text style={styles.shortcutIcon}>💳</Text>
+                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Fees</Text>
+                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Summary & Receipts</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
+                  onPress={() => setActiveTab('pay_online')}
+                >
+                  <Text style={styles.shortcutIcon}>📲</Text>
+                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Pay Online</Text>
+                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Instant UPI</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
+                  onPress={() => setActiveTab('material')}
+                >
+                  <Text style={styles.shortcutIcon}>📚</Text>
+                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Study Material</Text>
+                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Google Drive</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
+                  onPress={() => setActiveTab('attendance')}
+                >
+                  <Text style={styles.shortcutIcon}>📸</Text>
+                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Attendance</Text>
+                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Facial Impression</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
-          <View style={{ height: 40 }} />
+          {/* ============================================================== */}
+          {/* TAB 2: STUDY MATERIAL */}
+          {/* ============================================================== */}
+          {activeTab === 'material' && (
+            <View>
+              <View style={[styles.card, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: themeText, marginBottom: 6 }}>
+                  📖 Course Notes & Material
+                </Text>
+                <Text style={{ fontSize: 13, color: themeTextMuted, lineHeight: 18 }}>
+                  Access syllabus, practice files, and notes for <Text style={{ fontWeight: 'bold', color: '#2563eb' }}>{session.course}</Text> linked to the center's Google Drive.
+                </Text>
+
+                <TouchableOpacity 
+                  style={[styles.primaryBtn, { marginTop: 16 }]}
+                  onPress={() => Linking.openURL('https://drive.google.com/').catch(() => Alert.alert('Error', 'Unable to open Google Drive'))}
+                >
+                  <Text style={styles.primaryBtnText}>📂 Open Google Drive Folder →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 3: FEES SUMMARY & RECEIPTS */}
+          {/* ============================================================== */}
+          {activeTab === 'fees' && (
+            <View>
+              {/* FEE SUMMARY CARD */}
+              <View style={[styles.card, styles.feeCard, { backgroundColor: themeCard }]}>
+                <Text style={styles.feeCardTitle}>FEE SUMMARY</Text>
+                <View style={styles.feeGrid}>
+                  <View style={styles.feeCol}>
+                    <Text style={styles.feeLabel}>Total Course Fee</Text>
+                    <Text style={[styles.feeAmount, { color: themeText }]}>₹{Number(session.total_fee || 0).toLocaleString('en-IN')}</Text>
+                  </View>
+                  <View style={styles.feeCol}>
+                    <Text style={styles.feeLabel}>Total Paid</Text>
+                    <Text style={[styles.feeAmount, { color: '#10b981' }]}>₹{Number(session.total_paid || 0).toLocaleString('en-IN')}</Text>
+                  </View>
+                </View>
+                <View style={[styles.divider, { backgroundColor: themeBorder }]} />
+                <View style={styles.balanceRow}>
+                  <Text style={[styles.balanceLabel, { color: themeTextMuted }]}>Remaining Balance Due:</Text>
+                  <Text style={[styles.balanceAmount, { color: session.balance > 0 ? '#ef4444' : '#10b981' }]}>
+                    ₹{Number(session.balance || 0).toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* PAYMENT RECEIPTS LIST */}
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeader}>PAYMENT RECEIPTS</Text>
+                <Text style={styles.sectionHeaderHint}>Tap receipt to view & QR</Text>
+              </View>
+
+              {session.payments && session.payments.length > 0 ? (
+                session.payments.map((p, idx) => (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={[styles.paymentCard, { backgroundColor: themeCard, borderColor: themeBorder }]}
+                    activeOpacity={0.7}
+                    onPress={() => setSelectedReceipt(p)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.receiptTitle, { color: themeText }]}>Receipt #{p.receipt_no}</Text>
+                        <View style={styles.qrBadge}>
+                          <Text style={styles.qrBadgeText}>QR</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.receiptDate, { color: themeTextMuted }]}>{p.date} • {p.mode}</Text>
+                      {p.remarks ? <Text style={[styles.receiptRemarks, { color: themeTextMuted }]}>Receipt No.: {p.remarks}</Text> : null}
+                    </View>
+
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.receiptAmount}>₹{Number(p.amount || 0).toLocaleString('en-IN')}</Text>
+                      <Text style={styles.viewReceiptLink}>View Receipt ›</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={[styles.emptyCard, { backgroundColor: themeCard }]}>
+                  <Text style={styles.emptyText}>No payments recorded yet.</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 4: PAY FEES ONLINE */}
+          {/* ============================================================== */}
+          {activeTab === 'pay_online' && (
+            <View>
+              <View style={[styles.card, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: themeText, marginBottom: 4 }}>
+                  📲 Pay Fees Online via UPI
+                </Text>
+                <Text style={{ fontSize: 13, color: themeTextMuted, marginBottom: 14 }}>
+                  Exclusively powered by YOUPI integration. Mode defaulted to UPI with auto-generated receipt.
+                </Text>
+
+                <View style={[styles.infoRow, { borderBottomWidth: 1, borderColor: themeBorder }]}>
+                  <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Student Name:</Text>
+                  <Text style={[styles.infoValue, { color: themeText, fontWeight: '700' }]}>{studentNameCaps}</Text>
+                </View>
+                <View style={[styles.infoRow, { borderBottomWidth: 1, borderColor: themeBorder }]}>
+                  <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Ledger Number:</Text>
+                  <Text style={[styles.infoValue, { color: themeText, fontWeight: '700' }]}>{session.ledger_no}</Text>
+                </View>
+                <View style={[styles.infoRow, { borderBottomWidth: 1, borderColor: themeBorder }]}>
+                  <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Outstanding Due:</Text>
+                  <Text style={[styles.infoValue, { color: '#ef4444', fontWeight: '900' }]}>₹{Number(session.balance || 0).toLocaleString('en-IN')}</Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.primaryBtn, { marginTop: 18, backgroundColor: '#10b981' }]}
+                  onPress={() => Alert.alert('YOUPI Gateway', 'Launching secure YOUPI UPI payment gateway...')}
+                >
+                  <Text style={styles.primaryBtnText}>💳 Proceed to Pay via UPI</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 5: MARK ATTENDANCE */}
+          {/* ============================================================== */}
+          {activeTab === 'attendance' && (
+            <View>
+              <View style={[styles.card, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: themeText, marginBottom: 6 }}>
+                  📸 Facial Impression Attendance
+                </Text>
+                <Text style={{ fontSize: 13, color: themeTextMuted, lineHeight: 18, marginBottom: 16 }}>
+                  Stored safely on your device with center GPS geo-fence verification.
+                </Text>
+
+                <TouchableOpacity 
+                  style={styles.primaryBtn}
+                  onPress={() => Alert.alert('Register Facial Impression', 'Face scan camera will open to register your Facial Impression locally.')}
+                >
+                  <Text style={styles.primaryBtnText}>Register Facial Impression</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 6: SETTINGS & DARK MODE */}
+          {/* ============================================================== */}
+          {activeTab === 'settings' && (
+            <View>
+              <View style={[styles.card, { backgroundColor: themeCard, borderColor: themeBorder }]}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: themeText, marginBottom: 14 }}>
+                  ⚙️ App Settings
+                </Text>
+
+                <View style={[styles.infoRow, { alignItems: 'center', paddingVertical: 12 }]}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: themeText }}>Dark Mode</Text>
+                  <TouchableOpacity 
+                    style={[styles.darkModeToggle, { backgroundColor: isDarkMode ? '#2563eb' : '#cbd5e1' }]}
+                    onPress={() => setIsDarkMode(!isDarkMode)}
+                  >
+                    <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 11 }}>
+                      {isDarkMode ? 'ON' : 'OFF'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.logoutBtnLarge, { marginTop: 24 }]}
+                  onPress={handleLogout}
+                >
+                  <Text style={styles.logoutBtnLargeText}>Sign Out of Student Account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <View style={{ height: 60 }} />
         </ScrollView>
+
+        {/* LEFT DRAWER MODAL */}
+        <Modal
+          visible={isDrawerOpen}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsDrawerOpen(false)}
+        >
+          <View style={styles.drawerOverlay}>
+            <TouchableOpacity 
+              style={styles.drawerBackdrop}
+              activeOpacity={1}
+              onPress={() => setIsDrawerOpen(false)}
+            />
+            
+            <View style={[styles.drawerContent, { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }]}>
+              {/* DRAWER HEADER */}
+              <View style={[styles.drawerHeader, { borderBottomColor: themeBorder }]}>
+                <Image source={APP_LOGO} style={styles.drawerLogoImage} resizeMode="contain" />
+                <Text style={[styles.drawerBrand, { color: themeText }]}>DOT-CMC COMPUTER</Text>
+                <Text style={styles.drawerStudentName} numberOfLines={1}>{studentNameCaps}</Text>
+                <Text style={styles.drawerLedger}>Ledger: {session.ledger_no}</Text>
+              </View>
+
+              {/* DRAWER MENU ITEMS */}
+              <ScrollView style={styles.drawerMenu} showsVerticalScrollIndicator={false}>
+                <Text style={styles.drawerSectionLabel}>MAIN MENU</Text>
+
+                <TouchableOpacity 
+                  style={[styles.drawerItem, activeTab === 'home' && styles.drawerItemActive]}
+                  onPress={() => { setActiveTab('home'); setIsDrawerOpen(false); }}
+                >
+                  <Text style={styles.drawerItemIcon}>🏠</Text>
+                  <Text style={[styles.drawerItemText, activeTab === 'home' && styles.drawerItemTextActive]}>Home</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.drawerItem, activeTab === 'material' && styles.drawerItemActive]}
+                  onPress={() => { setActiveTab('material'); setIsDrawerOpen(false); }}
+                >
+                  <Text style={styles.drawerItemIcon}>📚</Text>
+                  <Text style={[styles.drawerItemText, activeTab === 'material' && styles.drawerItemTextActive]}>Study Material</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.drawerItem, activeTab === 'fees' && styles.drawerItemActive]}
+                  onPress={() => { setActiveTab('fees'); setIsDrawerOpen(false); }}
+                >
+                  <Text style={styles.drawerItemIcon}>💳</Text>
+                  <Text style={[styles.drawerItemText, activeTab === 'fees' && styles.drawerItemTextActive]}>Fees</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.drawerItem, activeTab === 'pay_online' && styles.drawerItemActive]}
+                  onPress={() => { setActiveTab('pay_online'); setIsDrawerOpen(false); }}
+                >
+                  <Text style={styles.drawerItemIcon}>📲</Text>
+                  <Text style={[styles.drawerItemText, activeTab === 'pay_online' && styles.drawerItemTextActive]}>Pay Fees Online</Text>
+                </TouchableOpacity>
+
+                <View style={[styles.drawerDivider, { backgroundColor: themeBorder }]} />
+
+                <Text style={styles.drawerSectionLabel}>FEATURES & SETTINGS</Text>
+
+                <TouchableOpacity 
+                  style={[styles.drawerItem, activeTab === 'attendance' && styles.drawerItemActive]}
+                  onPress={() => { setActiveTab('attendance'); setIsDrawerOpen(false); }}
+                >
+                  <Text style={styles.drawerItemIcon}>📸</Text>
+                  <Text style={[styles.drawerItemText, activeTab === 'attendance' && styles.drawerItemTextActive]}>Mark Attendance</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.drawerItem, activeTab === 'settings' && styles.drawerItemActive]}
+                  onPress={() => { setActiveTab('settings'); setIsDrawerOpen(false); }}
+                >
+                  <Text style={styles.drawerItemIcon}>⚙️</Text>
+                  <Text style={[styles.drawerItemText, activeTab === 'settings' && styles.drawerItemTextActive]}>Settings</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.drawerItem}
+                  onPress={() => {
+                    setIsDarkMode(!isDarkMode);
+                  }}
+                >
+                  <Text style={styles.drawerItemIcon}>{isDarkMode ? '☀️' : '🌙'}</Text>
+                  <Text style={styles.drawerItemText}>
+                    Dark Mode: <Text style={{ fontWeight: 'bold' }}>{isDarkMode ? 'ON' : 'OFF'}</Text>
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.drawerItem, { marginTop: 16 }]}
+                  onPress={() => {
+                    setIsDrawerOpen(false);
+                    handleLogout();
+                  }}
+                >
+                  <Text style={styles.drawerItemIcon}>🚪</Text>
+                  <Text style={[styles.drawerItemText, { color: '#dc2626', fontWeight: '800' }]}>Log Out</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
         {selectedReceipt && (
@@ -496,22 +838,220 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // CLEAN BRIGHT MODERN TOPBAR (SAFE FROM NOTIFICATION BAR)
-  topbarContainer: {
+  // HAMBURGER & NOTIFICATION BELL
+  hamburgerBtn: {
+    padding: 8,
+    marginRight: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hamburgerLine: {
+    width: 20,
+    height: 2.5,
+    borderRadius: 2,
+    marginVertical: 2,
+  },
+  bellBtn: {
+    position: 'relative',
+    padding: 6,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+  },
+
+  // GREETING & REGISTRATION CARD
+  greetingCard: {
     backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  greetingSubtitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2563eb',
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  greetingTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  greetingMeta: {
+    fontSize: 13,
+    marginBottom: 14,
+  },
+  completeRegBtn: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  completeRegBtnText: {
+    color: '#1d4ed8',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // SHORTCUTS GRID
+  shortcutsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  shortcutItem: {
+    width: '48%',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  shortcutIcon: {
+    fontSize: 26,
+    marginBottom: 8,
+  },
+  shortcutTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  shortcutDesc: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  // DRAWER MODAL STYLES
+  drawerOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+  },
+  drawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  drawerContent: {
+    width: '80%',
+    maxWidth: 320,
+    height: '100%',
+    paddingTop: Platform.OS === 'android' ? 40 : 50,
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ? StatusBar.currentHeight + 8 : 16) : 10,
-    paddingBottom: 14,
+    paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  drawerHeader: {
+    alignItems: 'center',
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    marginBottom: 16,
+  },
+  drawerLogoImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 10,
+  },
+  drawerBrand: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  drawerStudentName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2563eb',
+    marginTop: 4,
+  },
+  drawerLedger: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  drawerMenu: {
+    flex: 1,
+  },
+  drawerSectionLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94a3b8',
+    letterSpacing: 1.2,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  drawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  drawerItemActive: {
+    backgroundColor: '#eff6ff',
+  },
+  drawerItemIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  drawerItemText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  drawerItemTextActive: {
+    color: '#2563eb',
+    fontWeight: '900',
+  },
+  drawerDivider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  darkModeToggle: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  logoutBtnLarge: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  logoutBtnLargeText: {
+    color: '#dc2626',
+    fontWeight: '800',
+    fontSize: 14,
   },
   topbarLeft: {
     flexDirection: 'row',
