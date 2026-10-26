@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -16,7 +16,9 @@ import {
   Modal,
   Linking,
   Share,
-  BackHandler
+  BackHandler,
+  Animated,
+  Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
@@ -51,10 +53,32 @@ export default function App() {
   // Selected receipt for modal preview
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
-  // Left Drawer Navigation State
+  // Left Drawer Navigation State & Smooth Slide Animation
+  const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.78, 300);
+  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'material' | 'fees' | 'pay_online' | 'attendance' | 'settings'
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  function openDrawer() {
+    setIsDrawerOpen(true);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 260,
+      useNativeDriver: true,
+    }).start();
+  }
+
+  function closeDrawer(callback) {
+    Animated.timing(slideAnim, {
+      toValue: -DRAWER_WIDTH,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsDrawerOpen(false);
+      if (callback) callback();
+    });
+  }
 
   useEffect(() => {
     checkSavedSession();
@@ -68,7 +92,7 @@ export default function App() {
         return true;
       }
       if (isDrawerOpen) {
-        setIsDrawerOpen(false);
+        closeDrawer();
         return true;
       }
       if (activeTab !== 'home') {
@@ -232,7 +256,7 @@ export default function App() {
             ) : (
               <TouchableOpacity 
                 style={styles.hamburgerBtn}
-                onPress={() => setIsDrawerOpen(true)}
+                onPress={openDrawer}
                 activeOpacity={0.7}
               >
                 <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
@@ -313,45 +337,6 @@ export default function App() {
                   <Text style={[styles.infoLabel, { color: themeTextMuted }]}>Registered Mobile:</Text>
                   <Text style={[styles.infoValue, { color: themeText }]}>{session.contact || 'N/A'}</Text>
                 </View>
-              </View>
-
-              {/* QUICK SHORTCUTS GRID */}
-              <View style={styles.shortcutsGrid}>
-                <TouchableOpacity 
-                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
-                  onPress={() => setActiveTab('fees')}
-                >
-                  <Text style={styles.shortcutIcon}>💳</Text>
-                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Fees</Text>
-                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Summary & Receipts</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
-                  onPress={() => setActiveTab('pay_online')}
-                >
-                  <Text style={styles.shortcutIcon}>📲</Text>
-                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Pay Online</Text>
-                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Instant UPI</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
-                  onPress={() => setActiveTab('material')}
-                >
-                  <Text style={styles.shortcutIcon}>📚</Text>
-                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Study Material</Text>
-                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Google Drive</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.shortcutItem, { backgroundColor: themeCard, borderColor: themeBorder }]}
-                  onPress={() => setActiveTab('attendance')}
-                >
-                  <Text style={styles.shortcutIcon}>📸</Text>
-                  <Text style={[styles.shortcutTitle, { color: themeText }]}>Attendance</Text>
-                  <Text style={[styles.shortcutDesc, { color: themeTextMuted }]}>Facial Impression</Text>
-                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -539,21 +524,24 @@ export default function App() {
           <View style={{ height: 60 }} />
         </ScrollView>
 
-        {/* LEFT DRAWER MODAL */}
-        <Modal
-          visible={isDrawerOpen}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setIsDrawerOpen(false)}
-        >
-          <View style={styles.drawerOverlay}>
+        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION */}
+        {isDrawerOpen && (
+          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+            {/* BACKDROP */}
             <TouchableOpacity 
               style={styles.drawerBackdrop}
               activeOpacity={1}
-              onPress={() => setIsDrawerOpen(false)}
+              onPress={() => closeDrawer()}
             />
             
-            <View style={[styles.drawerContent, { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }]}>
+            {/* SLIDING DRAWER CONTAINER */}
+            <Animated.View style={[
+              styles.drawerContent, 
+              { 
+                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+                transform: [{ translateX: slideAnim }]
+              }
+            ]}>
               {/* DRAWER HEADER */}
               <View style={[styles.drawerHeader, { borderBottomColor: themeBorder }]}>
                 <Image source={APP_LOGO} style={styles.drawerLogoImage} resizeMode="contain" />
@@ -568,7 +556,7 @@ export default function App() {
 
                 <TouchableOpacity 
                   style={[styles.drawerItem, activeTab === 'home' && styles.drawerItemActive]}
-                  onPress={() => { setActiveTab('home'); setIsDrawerOpen(false); }}
+                  onPress={() => closeDrawer(() => setActiveTab('home'))}
                 >
                   <Text style={styles.drawerItemIcon}>🏠</Text>
                   <Text style={[styles.drawerItemText, activeTab === 'home' && styles.drawerItemTextActive]}>Home</Text>
@@ -576,7 +564,7 @@ export default function App() {
 
                 <TouchableOpacity 
                   style={[styles.drawerItem, activeTab === 'material' && styles.drawerItemActive]}
-                  onPress={() => { setActiveTab('material'); setIsDrawerOpen(false); }}
+                  onPress={() => closeDrawer(() => setActiveTab('material'))}
                 >
                   <Text style={styles.drawerItemIcon}>📚</Text>
                   <Text style={[styles.drawerItemText, activeTab === 'material' && styles.drawerItemTextActive]}>Study Material</Text>
@@ -584,7 +572,7 @@ export default function App() {
 
                 <TouchableOpacity 
                   style={[styles.drawerItem, activeTab === 'fees' && styles.drawerItemActive]}
-                  onPress={() => { setActiveTab('fees'); setIsDrawerOpen(false); }}
+                  onPress={() => closeDrawer(() => setActiveTab('fees'))}
                 >
                   <Text style={styles.drawerItemIcon}>💳</Text>
                   <Text style={[styles.drawerItemText, activeTab === 'fees' && styles.drawerItemTextActive]}>Fees</Text>
@@ -592,7 +580,7 @@ export default function App() {
 
                 <TouchableOpacity 
                   style={[styles.drawerItem, activeTab === 'pay_online' && styles.drawerItemActive]}
-                  onPress={() => { setActiveTab('pay_online'); setIsDrawerOpen(false); }}
+                  onPress={() => closeDrawer(() => setActiveTab('pay_online'))}
                 >
                   <Text style={styles.drawerItemIcon}>📲</Text>
                   <Text style={[styles.drawerItemText, activeTab === 'pay_online' && styles.drawerItemTextActive]}>Pay Fees Online</Text>
@@ -604,7 +592,7 @@ export default function App() {
 
                 <TouchableOpacity 
                   style={[styles.drawerItem, activeTab === 'attendance' && styles.drawerItemActive]}
-                  onPress={() => { setActiveTab('attendance'); setIsDrawerOpen(false); }}
+                  onPress={() => closeDrawer(() => setActiveTab('attendance'))}
                 >
                   <Text style={styles.drawerItemIcon}>📸</Text>
                   <Text style={[styles.drawerItemText, activeTab === 'attendance' && styles.drawerItemTextActive]}>Mark Attendance</Text>
@@ -612,7 +600,7 @@ export default function App() {
 
                 <TouchableOpacity 
                   style={[styles.drawerItem, activeTab === 'settings' && styles.drawerItemActive]}
-                  onPress={() => { setActiveTab('settings'); setIsDrawerOpen(false); }}
+                  onPress={() => closeDrawer(() => setActiveTab('settings'))}
                 >
                   <Text style={styles.drawerItemIcon}>⚙️</Text>
                   <Text style={[styles.drawerItemText, activeTab === 'settings' && styles.drawerItemTextActive]}>Settings</Text>
@@ -632,18 +620,15 @@ export default function App() {
 
                 <TouchableOpacity 
                   style={[styles.drawerItem, { marginTop: 16 }]}
-                  onPress={() => {
-                    setIsDrawerOpen(false);
-                    handleLogout();
-                  }}
+                  onPress={() => closeDrawer(() => handleLogout())}
                 >
                   <Text style={styles.drawerItemIcon}>🚪</Text>
                   <Text style={[styles.drawerItemText, { color: '#dc2626', fontWeight: '800' }]}>Log Out</Text>
                 </TouchableOpacity>
               </ScrollView>
-            </View>
+            </Animated.View>
           </View>
-        </Modal>
+        )}
 
         {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
         {selectedReceipt && (
@@ -1019,15 +1004,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
   },
   drawerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
+  drawerContent: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     left: 0,
-    right: 0,
-  },
-  drawerContent: {
-    width: '80%',
-    maxWidth: 320,
+    width: '78%',
+    maxWidth: 300,
     height: '100%',
     paddingTop: Platform.OS === 'android' ? 40 : 50,
     paddingHorizontal: 20,
@@ -1035,7 +1021,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 16,
+    zIndex: 999,
   },
   drawerHeader: {
     alignItems: 'center',
