@@ -257,7 +257,8 @@ export default function App() {
               <TouchableOpacity 
                 style={styles.hamburgerBtn}
                 onPress={openDrawer}
-                activeOpacity={0.7}
+                activeOpacity={0.6}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               >
                 <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
                 <View style={[styles.hamburgerLine, { backgroundColor: themeText, width: 16 }]} />
@@ -524,9 +525,14 @@ export default function App() {
           <View style={{ height: 60 }} />
         </ScrollView>
 
-        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION */}
-        {isDrawerOpen && (
-          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION IN TOP-LEVEL MODAL */}
+        <Modal
+          visible={isDrawerOpen}
+          transparent={true}
+          animationType="none"
+          onRequestClose={() => closeDrawer()}
+        >
+          <View style={styles.drawerOverlay}>
             {/* BACKDROP */}
             <TouchableOpacity 
               style={styles.drawerBackdrop}
@@ -628,7 +634,7 @@ export default function App() {
               </ScrollView>
             </Animated.View>
           </View>
-        )}
+        </Modal>
 
         {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
         {selectedReceipt && (
