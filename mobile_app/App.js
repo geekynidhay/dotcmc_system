@@ -242,7 +242,9 @@ export default function App() {
         {/* TOPBAR WITH HAMBURGER DRAWER TRIGGER & NOTIFICATION BELL */}
         <View style={[styles.topbarContainer, { 
           backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-          borderBottomColor: themeBorder
+          borderBottomColor: themeBorder,
+          elevation: isDrawerOpen ? 0 : 3,
+          zIndex: isDrawerOpen ? 1 : 10
         }]}>
           <View style={styles.topbarLeft}>
             {/* BACK BUTTON OR HAMBURGER */}
