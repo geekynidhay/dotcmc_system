@@ -36,6 +36,8 @@ const ENDPOINTS = [
 // Base URL for online view receipt
 const RECEIPT_BASE_URL = 'https://dotcmc-center-test.loca.lt/view_receipt.php';
 
+const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.78, 300);
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,18 +56,17 @@ export default function App() {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   // Left Drawer Navigation State & Smooth Slide Animation
-  const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.78, 300);
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'material' | 'fees' | 'pay_online' | 'attendance' | 'settings'
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   function openDrawer() {
-    slideAnim.setValue(-DRAWER_WIDTH);
     setIsDrawerOpen(true);
+    slideAnim.setValue(-DRAWER_WIDTH);
     Animated.timing(slideAnim, {
       toValue: 0,
-      duration: 240,
+      duration: 250,
       useNativeDriver: true,
     }).start();
   }
@@ -1013,16 +1014,15 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     left: 0,
-    width: '78%',
-    maxWidth: 300,
+    width: DRAWER_WIDTH,
     height: '100%',
-    paddingTop: Platform.OS === 'android' ? 40 : 50,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ? StatusBar.currentHeight + 8 : 40) : 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 16,
+    elevation: 24,
     zIndex: 999,
   },
   drawerHeader: {
