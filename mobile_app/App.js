@@ -18,8 +18,7 @@ import {
   Share,
   BackHandler,
   Animated,
-  Dimensions,
-  TouchableWithoutFeedback
+  Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
@@ -63,10 +62,9 @@ export default function App() {
 
   function openDrawer() {
     setIsDrawerOpen(true);
-    slideAnim.setValue(-DRAWER_WIDTH);
     Animated.timing(slideAnim, {
       toValue: 0,
-      duration: 250,
+      duration: 260,
       useNativeDriver: true,
     }).start();
   }
@@ -74,9 +72,9 @@ export default function App() {
   function closeDrawer(callback) {
     Animated.timing(slideAnim, {
       toValue: -DRAWER_WIDTH,
-      duration: 200,
+      duration: 220,
       useNativeDriver: true,
-    }).start(({ finished }) => {
+    }).start(() => {
       setIsDrawerOpen(false);
       if (callback) callback();
     });
@@ -259,8 +257,7 @@ export default function App() {
               <TouchableOpacity 
                 style={styles.hamburgerBtn}
                 onPress={openDrawer}
-                activeOpacity={0.6}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                activeOpacity={0.7}
               >
                 <View style={[styles.hamburgerLine, { backgroundColor: themeText }]} />
                 <View style={[styles.hamburgerLine, { backgroundColor: themeText, width: 16 }]} />
@@ -527,31 +524,24 @@ export default function App() {
           <View style={{ height: 60 }} />
         </ScrollView>
 
-        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION IN TRANSPARENT MODAL */}
-        <Modal
-          visible={isDrawerOpen}
-          transparent={true}
-          animationType="none"
-          onRequestClose={() => closeDrawer()}
-        >
-          <View style={styles.drawerRootOverlay}>
-            {/* FULL SCREEN BACKDROP TO DISMISS ON OUTSIDE TAP */}
+        {/* LEFT DRAWER WITH SMOOTH SLIDE ANIMATION */}
+        {isDrawerOpen && (
+          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+            {/* FULL SCREEN BACKDROP: Tapping outside drawer immediately closes it */}
             <TouchableOpacity 
-              style={styles.drawerBackdrop}
+              style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.55)' }]}
               activeOpacity={1}
               onPress={() => closeDrawer()}
             />
             
             {/* SLIDING DRAWER CONTAINER */}
-            <Animated.View 
-              style={[
-                styles.drawerContent, 
-                { 
-                  backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-                  transform: [{ translateX: slideAnim }]
-                }
-              ]}
-            >
+            <Animated.View style={[
+              styles.drawerContent, 
+              { 
+                backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+                transform: [{ translateX: slideAnim }]
+              }
+            ]}>
               {/* DRAWER HEADER */}
               <View style={[styles.drawerHeader, { borderBottomColor: themeBorder }]}>
                 <Image source={APP_LOGO} style={styles.drawerLogoImage} resizeMode="contain" />
@@ -638,7 +628,7 @@ export default function App() {
               </ScrollView>
             </Animated.View>
           </View>
-        </Modal>
+        )}
 
         {/* FULL RECEIPT POPUP MODAL WITH OFFICIAL RECEIPT + QR CODE */}
         {selectedReceipt && (
@@ -904,18 +894,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   hamburgerBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    padding: 8,
     marginRight: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
   },
   hamburgerLine: {
-    width: 22,
-    height: 3,
+    width: 20,
+    height: 2.5,
     borderRadius: 2,
-    marginVertical: 2.2,
+    marginVertical: 2,
   },
   bellBtn: {
     position: 'relative',
@@ -1010,13 +998,14 @@ const styles = StyleSheet.create({
   },
 
   // DRAWER MODAL STYLES
-  drawerRootOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 998,
+  drawerOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
   },
   drawerBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
   },
   drawerContent: {
     position: 'absolute',
@@ -1026,13 +1015,13 @@ const styles = StyleSheet.create({
     width: '78%',
     maxWidth: 300,
     height: '100%',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 36) : 50,
+    paddingTop: Platform.OS === 'android' ? 40 : 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 24,
+    elevation: 16,
     zIndex: 999,
   },
   drawerHeader: {
